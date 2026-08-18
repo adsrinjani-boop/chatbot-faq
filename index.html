@@ -70,6 +70,7 @@
     <nav class="max-w-6xl mx-auto px-4 mt-2 flex gap-1 text-sm font-semibold">
       <button data-tab="embed" class="tabbtn px-4 py-2.5 rounded-t-lg bg-white text-emerald-700">📦 Kode Embed</button>
       <button data-tab="logs" class="tabbtn px-4 py-2.5 rounded-t-lg text-emerald-100 hover:bg-white/10">📊 Activity &amp; Logs</button>
+      <button data-tab="faq" class="tabbtn px-4 py-2.5 rounded-t-lg text-emerald-100 hover:bg-white/10">❓ Kelola FAQ</button>
       <button data-tab="sql" class="tabbtn px-4 py-2.5 rounded-t-lg text-emerald-100 hover:bg-white/10">🛠️ Setup SQL</button>
     </nav>
   </header>
@@ -173,6 +174,84 @@
               </tr>
             </thead>
             <tbody id="logsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== TAB: FAQ ========== -->
+    <section id="tab-faq" class="hidden space-y-4">
+      <div class="bg-amber-50 border border-amber-300 rounded-2xl p-5">
+        <h2 class="font-bold text-amber-800">⚠️ Perlu Tabel <code>faq_data</code> di Supabase</h2>
+        <p class="text-sm text-amber-800 mt-1 leading-relaxed">
+          Jalankan SQL berikut sekali saja di <strong>Supabase Dashboard → SQL Editor</strong> sebelum memakai fitur ini
+          (aman dijalankan meski tabel sudah ada — pakai <code>IF NOT EXISTS</code>).
+        </p>
+        <pre class="sql mt-3 font-mono text-xs bg-slate-900 text-emerald-300 rounded-xl p-4"><code id="faqSqlCode">create table if not exists public.faq_data (
+  id bigint generated always as identity primary key,
+  question text not null,
+  answer text not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.faq_data enable row level security;
+
+create policy if not exists "faq_public_read" on public.faq_data
+  for select using (true);
+
+create policy if not exists "faq_admin_write" on public.faq_data
+  for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');</code></pre>
+        <button id="btnCopyFaqSql" class="mt-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition">
+          📋 Copy SQL
+        </button>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow p-5">
+        <h2 id="faqFormTitle" class="font-bold text-lg">Tambah FAQ Baru</h2>
+        <p class="text-sm text-slate-500 mt-1">FAQ ini akan otomatis muncul sebagai tombol pilihan cepat di widget chatbot saat pertama kali dibuka pengunjung.</p>
+
+        <div class="mt-3">
+          <label class="block text-xs font-semibold text-slate-500 mb-1">PERTANYAAN</label>
+          <input id="faqQuestion" type="text" placeholder="Contoh: Bagaimana cara melakukan pembayaran?"
+            class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 focus:outline-none focus:border-emerald-500">
+
+          <label class="block text-xs font-semibold text-slate-500 mb-1">JAWABAN</label>
+          <textarea id="faqAnswer" rows="3" placeholder="Contoh: Pembayaran bisa via transfer bank, e-wallet, atau QRIS."
+            class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 focus:outline-none focus:border-emerald-500"></textarea>
+
+          <div id="faqFormError" class="hidden mb-3 text-sm bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2"></div>
+
+          <div class="flex flex-wrap gap-2">
+            <button id="btnFaqSubmit" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition">
+              ➕ Tambah FAQ
+            </button>
+            <button id="btnFaqCancelEdit" class="hidden bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold px-4 py-2.5 rounded-lg transition">
+              Batal Edit
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow p-5">
+        <div class="flex flex-wrap items-center gap-2">
+          <h2 class="font-bold text-lg mr-auto">Daftar FAQ</h2>
+          <button id="btnFaqRefresh" class="text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg transition">
+            ↻ Refresh
+          </button>
+        </div>
+
+        <div id="faqError" class="hidden mt-3 text-sm bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2"></div>
+
+        <div class="mt-3 overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-left text-xs text-slate-400 border-b">
+                <th class="py-2 pr-3">PERTANYAAN</th>
+                <th class="py-2 pr-3">JAWABAN</th>
+                <th class="py-2">AKSI</th>
+              </tr>
+            </thead>
+            <tbody id="faqBody"></tbody>
           </table>
         </div>
       </div>
@@ -338,9 +417,10 @@ tabBtns.forEach(function (btn) {
   btn.onclick = function () {
     tabBtns.forEach(function (b) { b.className = 'tabbtn px-4 py-2.5 rounded-t-lg text-emerald-100 hover:bg-white/10'; });
     btn.className = 'tabbtn px-4 py-2.5 rounded-t-lg bg-white text-emerald-700';
-    ['embed', 'logs', 'sql'].forEach(function (t) { $('tab-' + t).classList.add('hidden'); });
+    ['embed', 'logs', 'faq', 'sql'].forEach(function (t) { $('tab-' + t).classList.add('hidden'); });
     $('tab-' + btn.dataset.tab).classList.remove('hidden');
     if (btn.dataset.tab === 'logs') loadLogs();
+    if (btn.dataset.tab === 'faq') loadFaq();
   };
 });
 
@@ -532,6 +612,124 @@ $('btnResetAll').addEventListener('click', async function () {
     loadLogs();
   } finally {
     btn.disabled = false; btn.textContent = '⚠️ Reset / Clear All Data';
+  }
+});
+
+/* ---------------- FAQ CRUD ---------------- */
+var allFaqs = [];
+var faqEditingId = null;
+
+$('btnCopyFaqSql').onclick = function () { copyText($('faqSqlCode').textContent, 'SQL FAQ tersalin ✓'); };
+
+async function loadFaq() {
+  $('faqError').classList.add('hidden');
+  var r = await sb.from('faq_data').select('*').order('id', { ascending: true });
+  if (r.error) {
+    allFaqs = [];
+    var e = $('faqError');
+    e.textContent = 'Gagal memuat FAQ: ' + r.error.message + ' — pastikan tabel "faq_data" sudah dibuat (lihat SQL di atas).';
+    e.classList.remove('hidden');
+  } else {
+    allFaqs = r.data || [];
+  }
+  renderFaq();
+}
+
+function renderFaq() {
+  var body = $('faqBody');
+  if (!allFaqs.length) {
+    body.innerHTML = '<tr><td colspan="3" class="py-8 text-center text-slate-400 text-sm">Belum ada FAQ. Tambahkan lewat form di atas.</td></tr>';
+    return;
+  }
+  body.innerHTML = allFaqs.map(function (f) {
+    return '<tr class="border-b border-slate-100 hover:bg-slate-50 align-top">' +
+      '<td class="py-2.5 pr-3 text-slate-700 max-w-[240px] break-words font-semibold">' + esc(f.question) + '</td>' +
+      '<td class="py-2.5 pr-3 text-slate-600 max-w-[360px] break-words whitespace-pre-wrap">' + esc(f.answer) + '</td>' +
+      '<td class="py-2.5 whitespace-nowrap">' +
+        '<button data-faq-edit="' + f.id + '" class="text-[11px] font-bold text-emerald-700 hover:bg-emerald-50 border border-emerald-200 rounded-lg px-2 py-1 transition mr-1">Edit</button>' +
+        '<button data-faq-del="' + f.id + '" class="text-[11px] font-bold text-red-600 hover:bg-red-50 border border-red-200 rounded-lg px-2 py-1 transition">Hapus</button>' +
+      '</td>' +
+      '</tr>';
+  }).join('');
+}
+
+function faqError(msg) {
+  var e = $('faqFormError');
+  e.textContent = msg;
+  e.classList.remove('hidden');
+}
+function faqClearError() { $('faqFormError').classList.add('hidden'); }
+
+function startFaqEdit(id) {
+  var f = allFaqs.find(function (x) { return String(x.id) === String(id); });
+  if (!f) return;
+  faqEditingId = f.id;
+  $('faqQuestion').value = f.question || '';
+  $('faqAnswer').value = f.answer || '';
+  $('faqFormTitle').textContent = 'Edit FAQ';
+  $('btnFaqSubmit').textContent = '💾 Simpan Perubahan';
+  $('btnFaqCancelEdit').classList.remove('hidden');
+  faqClearError();
+  $('faqQuestion').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  $('faqQuestion').focus();
+}
+
+function cancelFaqEdit() {
+  faqEditingId = null;
+  $('faqQuestion').value = '';
+  $('faqAnswer').value = '';
+  $('faqFormTitle').textContent = 'Tambah FAQ Baru';
+  $('btnFaqSubmit').textContent = '➕ Tambah FAQ';
+  $('btnFaqCancelEdit').classList.add('hidden');
+  faqClearError();
+}
+
+async function submitFaq() {
+  faqClearError();
+  var question = $('faqQuestion').value.trim();
+  var answer = $('faqAnswer').value.trim();
+  if (!question || !answer) return faqError('Pertanyaan dan jawaban wajib diisi.');
+
+  var btn = $('btnFaqSubmit');
+  btn.disabled = true;
+  var originalText = btn.textContent;
+  btn.textContent = 'Menyimpan...';
+  try {
+    if (faqEditingId) {
+      var r = await sb.from('faq_data').update({ question: question, answer: answer }).eq('id', faqEditingId);
+      if (r.error) return faqError('Gagal menyimpan: ' + r.error.message);
+      toast('FAQ diperbarui ✓');
+    } else {
+      var r2 = await sb.from('faq_data').insert({ question: question, answer: answer });
+      if (r2.error) return faqError('Gagal menambah: ' + r2.error.message);
+      toast('FAQ ditambahkan ✓');
+    }
+    cancelFaqEdit();
+    loadFaq();
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+$('btnFaqSubmit').addEventListener('click', submitFaq);
+$('btnFaqCancelEdit').addEventListener('click', cancelFaqEdit);
+$('btnFaqRefresh').addEventListener('click', function () { loadFaq(); toast('FAQ dimuat ulang ↻'); });
+
+$('faqBody').addEventListener('click', async function (e) {
+  var editBtn = e.target.closest('button[data-faq-edit]');
+  if (editBtn) { startFaqEdit(editBtn.dataset.faqEdit); return; }
+
+  var delBtn = e.target.closest('button[data-faq-del]');
+  if (delBtn) {
+    if (!confirm('Hapus FAQ ini?')) return;
+    var r = await sb.from('faq_data').delete().eq('id', delBtn.dataset.faqDel);
+    if (r.error) toast('Gagal: ' + r.error.message);
+    else {
+      toast('FAQ dihapus ✓');
+      if (String(faqEditingId) === String(delBtn.dataset.faqDel)) cancelFaqEdit();
+      loadFaq();
+    }
   }
 });
 
