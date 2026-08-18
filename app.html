@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ChatWidget CS — Admin Panel</title>
+  <meta name="description" content="Dashboard admin ChatWidget CS: kode embed, download widget.js, activity & chat logs, dan setup SQL Supabase.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    pre.sql { max-height: 420px; overflow: auto; }
+    .thumb { max-width: 72px; max-height: 72px; border-radius: 8px; cursor: pointer; border: 1px solid #e2e8f0; }
+    #toast { transition: opacity .3s, transform .3s; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen">
+
+<!-- ==================== VIEW: AUTH ==================== -->
+<div id="viewAuth" class="min-h-screen flex items-center justify-center p-4">
+  <div class="w-full max-w-sm">
+    <div class="text-center mb-6">
+      <div class="w-14 h-14 mx-auto rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-2xl shadow-lg">💬</div>
+      <h1 class="mt-3 text-2xl font-bold">ChatWidget CS</h1>
+      <p class="text-sm text-slate-500">Masuk ke Admin Panel</p>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-lg p-6">
+      <div class="grid grid-cols-2 gap-1 bg-slate-100 rounded-lg p-1 mb-5 text-sm font-semibold">
+        <button id="tabLogin" class="py-2 rounded-md bg-white shadow text-emerald-700">Masuk</button>
+        <button id="tabRegister" class="py-2 rounded-md text-slate-500">Daftar</button>
+      </div>
+
+      <label class="block text-xs font-semibold text-slate-500 mb-1">EMAIL</label>
+      <input id="authEmail" type="email" placeholder="admin@gmail.com"
+        class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 focus:outline-none focus:border-emerald-500">
+
+      <label class="block text-xs font-semibold text-slate-500 mb-1">PASSWORD</label>
+      <input id="authPass" type="password" placeholder="Minimal 6 karakter"
+        class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-4 focus:outline-none focus:border-emerald-500">
+
+      <div id="authError" class="hidden mb-3 text-sm bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2"></div>
+      <div id="authInfo" class="hidden mb-3 text-sm bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2"></div>
+
+      <button id="authSubmit"
+        class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg text-sm transition">
+        Masuk
+      </button>
+
+      <p class="mt-4 text-xs text-slate-400 text-center leading-relaxed">
+        Email dummy boleh dipakai, tapi domain harus valid (mis. <code>@gmail.com</code>).<br>
+        Pastikan <em>"Confirm email"</em> sudah dimatikan di Supabase — lihat tab <strong>Setup SQL</strong>.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== VIEW: DASHBOARD ==================== -->
+<div id="viewApp" class="hidden">
+  <header class="bg-emerald-600 text-white shadow-md">
+    <div class="max-w-6xl mx-auto px-4 pt-3 flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center text-lg">💬</div>
+      <div class="min-w-0">
+        <h1 class="font-bold leading-tight">ChatWidget CS</h1>
+        <p id="userEmail" class="text-xs text-emerald-100 truncate"></p>
+      </div>
+      <button id="btnLogout" class="ml-auto text-xs font-semibold bg-white/15 hover:bg-white/25 rounded-lg px-3 py-2 transition">
+        Keluar ⎋
+      </button>
+    </div>
+    <nav class="max-w-6xl mx-auto px-4 mt-2 flex gap-1 text-sm font-semibold">
+      <button data-tab="embed" class="tabbtn px-4 py-2.5 rounded-t-lg bg-white text-emerald-700">📦 Kode Embed</button>
+      <button data-tab="logs" class="tabbtn px-4 py-2.5 rounded-t-lg text-emerald-100 hover:bg-white/10">📊 Activity &amp; Logs</button>
+      <button data-tab="sql" class="tabbtn px-4 py-2.5 rounded-t-lg text-emerald-100 hover:bg-white/10">🛠️ Setup SQL</button>
+    </nav>
+  </header>
+
+  <main class="max-w-6xl mx-auto p-4 space-y-4">
+
+    <!-- ========== TAB: EMBED ========== -->
+    <section id="tab-embed" class="space-y-4">
+      <div class="bg-white rounded-2xl shadow p-5">
+        <h2 class="font-bold text-lg">Script Embed</h2>
+        <p class="text-sm text-slate-500 mt-1">Copy kode ini, lalu paste sebelum <code>&lt;/body&gt;</code> di website manapun. Ganti nomor WhatsApp dengan nomor CS Anda.</p>
+        <textarea id="embedCode" readonly rows="7"
+          class="mt-3 w-full font-mono text-xs bg-slate-900 text-emerald-300 rounded-xl p-4 focus:outline-none"></textarea>
+        <button id="btnCopyEmbed" class="mt-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition">
+          📋 Copy Kode Embed
+        </button>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow p-5">
+        <h2 class="font-bold text-lg">Download File Langsung</h2>
+        <p class="text-sm text-slate-500 mt-1">Unduh file widget untuk di-hosting sendiri, beserta contoh HTML siap pakai.</p>
+        <div class="mt-3 flex flex-wrap gap-3">
+          <a href="widget.js" download="widget.js"
+            class="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition">
+            ⬇️ Download widget.js
+          </a>
+          <button id="btnDlExample"
+            class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition">
+            ⬇️ Download index.html Example
+          </button>
+        </div>
+        <p class="mt-3 text-xs text-slate-400">File <code>index.html</code> yang diunduh sudah berisi kode embed dengan URL hosting ini — tinggal upload berdua dengan <code>widget.js</code>.</p>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow p-5">
+        <h2 class="font-bold text-lg">Konfigurasi Opsional</h2>
+        <p class="text-sm text-slate-500 mt-1">Semua opsi di-set lewat <code>window.CHAT_WIDGET_CONFIG</code> sebelum script di-load:</p>
+        <div class="mt-3 overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead><tr class="text-left text-xs text-slate-400 border-b">
+              <th class="py-2 pr-4">KEY</th><th class="py-2 pr-4">DEFAULT</th><th class="py-2">FUNGSI</th>
+            </tr></thead>
+            <tbody class="text-slate-600">
+              <tr class="border-b border-slate-100"><td class="py-2 pr-4 font-mono text-xs">whatsapp</td><td class="py-2 pr-4 font-mono text-xs">6281234567890</td><td class="py-2">Nomor WA tujuan tombol eskalasi</td></tr>
+              <tr class="border-b border-slate-100"><td class="py-2 pr-4 font-mono text-xs">botName</td><td class="py-2 pr-4 font-mono text-xs">CS Assistant</td><td class="py-2">Nama bot di header chat</td></tr>
+              <tr class="border-b border-slate-100"><td class="py-2 pr-4 font-mono text-xs">primary</td><td class="py-2 pr-4 font-mono text-xs">#16a34a</td><td class="py-2">Warna utama widget</td></tr>
+              <tr class="border-b border-slate-100"><td class="py-2 pr-4 font-mono text-xs">autoOpenDelay</td><td class="py-2 pr-4 font-mono text-xs">5000</td><td class="py-2">Delay auto-popup (ms)</td></tr>
+              <tr><td class="py-2 pr-4 font-mono text-xs">greeting</td><td class="py-2 pr-4 font-mono text-xs">Halo! 👋 ...</td><td class="py-2">Pesan sapaan pertama</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== TAB: LOGS ========== -->
+    <section id="tab-logs" class="hidden space-y-4">
+      <div class="grid grid-cols-3 gap-3">
+        <div class="bg-white rounded-2xl shadow p-4 text-center">
+          <div id="statPesan" class="text-2xl font-bold text-emerald-600">0</div>
+          <div class="text-xs text-slate-500 font-semibold mt-1">TOTAL PESAN</div>
+        </div>
+        <div class="bg-white rounded-2xl shadow p-4 text-center">
+          <div id="statSesi" class="text-2xl font-bold text-emerald-600">0</div>
+          <div class="text-xs text-slate-500 font-semibold mt-1">TOTAL SESI</div>
+        </div>
+        <div class="bg-white rounded-2xl shadow p-4 text-center">
+          <div id="statFoto" class="text-2xl font-bold text-emerald-600">0</div>
+          <div class="text-xs text-slate-500 font-semibold mt-1">FOTO MASUK</div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow p-5">
+        <div class="flex flex-wrap items-center gap-2">
+          <h2 class="font-bold text-lg mr-auto">Activity &amp; Chat Logs</h2>
+          <select id="filterSesi" class="border border-slate-300 rounded-lg px-2.5 py-2 text-xs font-semibold focus:outline-none focus:border-emerald-500 max-w-[180px]">
+            <option value="">Semua Sesi</option>
+          </select>
+          <button id="btnHapusSesi" class="text-xs font-bold bg-orange-100 hover:bg-orange-200 text-orange-700 px-3 py-2 rounded-lg transition">
+            🗑 Hapus Sesi
+          </button>
+          <button id="btnRefresh" class="text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg transition">
+            ↻ Refresh
+          </button>
+          <button id="btnResetAll" class="text-xs font-bold bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg transition">
+            ⚠️ Reset / Clear All Data
+          </button>
+        </div>
+
+        <div id="logsError" class="hidden mt-3 text-sm bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2"></div>
+
+        <div class="mt-3 overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-left text-xs text-slate-400 border-b">
+                <th class="py-2 pr-3 whitespace-nowrap">WAKTU</th>
+                <th class="py-2 pr-3">SESI</th>
+                <th class="py-2 pr-3">DARI</th>
+                <th class="py-2 pr-3">PESAN</th>
+                <th class="py-2 pr-3">FOTO</th>
+                <th class="py-2">AKSI</th>
+              </tr>
+            </thead>
+            <tbody id="logsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== TAB: SQL ========== -->
+    <section id="tab-sql" class="hidden space-y-4">
+      <div class="bg-amber-50 border border-amber-300 rounded-2xl p-5">
+        <h2 class="font-bold text-amber-800">⚠️ Langkah 1 — Matikan Verifikasi Email (WAJIB)</h2>
+        <p class="text-sm text-amber-800 mt-1 leading-relaxed">
+          Agar pendaftaran admin bisa pakai email dummy tanpa verifikasi:<br>
+          <strong>Supabase Dashboard → Authentication → Sign In / Providers → Email → matikan <em>"Confirm email"</em> → Save.</strong><br>
+          Tanpa ini, pendaftaran akan gagal kena <em>email rate limit</em> / diminta verifikasi.
+          Catatan: domain email harus tetap terlihat valid (mis. <code>@gmail.com</code>) — domain <code>example.com</code> ditolak Supabase.
+        </p>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow p-5">
+        <h2 class="font-bold text-lg">Langkah 2 — Jalankan SQL Ini</h2>
+        <p class="text-sm text-slate-500 mt-1">
+          Copy-paste ke <strong>Supabase Dashboard → SQL Editor → New query → Run</strong>.
+          Membuat tabel <code>chat_logs</code>, RLS policy (READ/INSERT/DELETE), dan bucket Storage <code>chat-media</code>.
+        </p>
+        <pre class="sql mt-3 font-mono text-xs bg-slate-900 text-emerald-300 rounded-xl p-4"><code id="sqlCode">Memuat supabase-setup.sql ...</code></pre>
+        <div class="mt-3 flex flex-wrap gap-3">
+          <button id="btnCopySql" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition">
+            📋 Copy SQL
+          </button>
+          <a href="supabase-setup.sql" download="supabase-setup.sql"
+            class="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition">
+            ⬇️ Download supabase-setup.sql
+          </a>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow p-5">
+        <h2 class="font-bold text-lg">Langkah 3 — Tes</h2>
+        <ol class="text-sm text-slate-600 mt-1 list-decimal list-inside space-y-1 leading-relaxed">
+          <li>Buka <a href="example.html" target="_blank" class="text-emerald-700 font-semibold underline">example.html</a>, kirim pesan &amp; foto dari widget.</li>
+          <li>Kembali ke sini, buka tab <strong>Activity &amp; Logs</strong> — pesan harus muncul.</li>
+          <li>Pasang kode embed di website Anda. Selesai! 🎉</li>
+        </ol>
+        <p class="mt-3 text-xs text-slate-400 leading-relaxed">
+          Catatan keamanan: setiap akun yang terdaftar di aplikasi ini bisa membaca &amp; menghapus semua log.
+          Untuk multi-admin yang lebih ketat, batasi policy <code>admin_read</code>/<code>admin_delete</code> ke email/user id tertentu.
+        </p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-xl z-50"></div>
+
+<script>
+/* ============================================================
+   ChatWidget CS — Admin Panel (Vanilla JS + Supabase CDN)
+   ============================================================ */
+var SUPABASE_URL = 'https://lmsgunuqsigdpnagkmjq.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxtc2d1bnVxc2lnZHBuYWdrbWpxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY3NjE5NzMsImV4cCI6MjEwMjMzNzk3M30.-sl-P0_Mr7hakna5XYq0hj_Q0g-EgM0ef5nAeX6iqKA';
+var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+var $ = function (id) { return document.getElementById(id); };
+var allLogs = [];
+
+/* ---------------- TOAST ---------------- */
+var toastTimer = null;
+function toast(msg) {
+  var t = $('toast');
+  t.textContent = msg;
+  t.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () { t.classList.add('hidden'); }, 2600);
+}
+
+/* ---------------- AUTH ---------------- */
+var authMode = 'login';
+
+function setAuthMode(mode) {
+  authMode = mode;
+  var on = 'py-2 rounded-md bg-white shadow text-emerald-700';
+  var off = 'py-2 rounded-md text-slate-500';
+  $('tabLogin').className = on; $('tabRegister').className = off;
+  if (mode === 'register') { $('tabLogin').className = off; $('tabRegister').className = on; }
+  $('authSubmit').textContent = mode === 'login' ? 'Masuk' : 'Daftar & Masuk';
+  $('authError').classList.add('hidden');
+  $('authInfo').classList.add('hidden');
+}
+
+function authError(msg) {
+  var e = $('authError');
+  e.textContent = msg;
+  e.classList.remove('hidden');
+  $('authInfo').classList.add('hidden');
+}
+function authInfo(msg) {
+  var e = $('authInfo');
+  e.innerHTML = msg;
+  e.classList.remove('hidden');
+  $('authError').classList.add('hidden');
+}
+
+function friendlyError(err) {
+  var m = (err && err.message) || 'Terjadi kesalahan';
+  if (/rate limit/i.test(m)) return 'Kena batas kirim email Supabase. Matikan dulu "Confirm email" di dashboard Supabase (panduan: tab Setup SQL), lalu coba lagi.';
+  if (/invalid login/i.test(m)) return 'Email atau password salah.';
+  if (/not confirmed/i.test(m)) return 'Email belum dikonfirmasi. Matikan "Confirm email" — lihat tab Setup SQL.';
+  if (/invalid/i.test(m) && /email/i.test(m)) return 'Domain email tidak valid. Pakai domain umum seperti @gmail.com.';
+  return m;
+}
+
+async function submitAuth() {
+  var email = $('authEmail').value.trim();
+  var pass = $('authPass').value;
+  if (!email || !pass) return authError('Email dan password wajib diisi.');
+  if (pass.length < 6) return authError('Password minimal 6 karakter.');
+
+  $('authSubmit').disabled = true;
+  $('authSubmit').textContent = 'Memproses...';
+  try {
+    if (authMode === 'login') {
+      var r = await sb.auth.signInWithPassword({ email: email, password: pass });
+      if (r.error) authError(friendlyError(r.error));
+    } else {
+      var r2 = await sb.auth.signUp({ email: email, password: pass });
+      if (r2.error) authError(friendlyError(r2.error));
+      else if (!r2.data.session) {
+        authInfo('Pendaftaran diterima, tapi Supabase masih meminta <strong>verifikasi email</strong>. Matikan "Confirm email" dulu (panduan: tab Setup SQL langkah 1), lalu daftar ulang.');
+      }
+      // jika session ada, onAuthStateChange akan membuka dashboard otomatis
+    }
+  } finally {
+    $('authSubmit').disabled = false;
+    $('authSubmit').textContent = authMode === 'login' ? 'Masuk' : 'Daftar & Masuk';
+  }
+}
+
+function toggleViews(session) {
+  if (session) {
+    $('viewAuth').classList.add('hidden');
+    $('viewApp').classList.remove('hidden');
+    $('userEmail').textContent = session.user.email || '';
+    buildEmbedCode();
+    loadLogs();
+  } else {
+    $('viewApp').classList.add('hidden');
+    $('viewAuth').classList.remove('hidden');
+  }
+}
+
+$('tabLogin').onclick = function () { setAuthMode('login'); };
+$('tabRegister').onclick = function () { setAuthMode('register'); };
+$('authSubmit').onclick = submitAuth;
+$('authPass').addEventListener('keydown', function (e) { if (e.key === 'Enter') submitAuth(); });
+$('btnLogout').onclick = async function () { await sb.auth.signOut(); };
+
+sb.auth.onAuthStateChange(function (event, session) { toggleViews(session); });
+sb.auth.getSession().then(function (r) { toggleViews(r.data.session); });
+
+/* ---------------- TABS ---------------- */
+var tabBtns = document.querySelectorAll('.tabbtn');
+tabBtns.forEach(function (btn) {
+  btn.onclick = function () {
+    tabBtns.forEach(function (b) { b.className = 'tabbtn px-4 py-2.5 rounded-t-lg text-emerald-100 hover:bg-white/10'; });
+    btn.className = 'tabbtn px-4 py-2.5 rounded-t-lg bg-white text-emerald-700';
+    ['embed', 'logs', 'sql'].forEach(function (t) { $('tab-' + t).classList.add('hidden'); });
+    $('tab-' + btn.dataset.tab).classList.remove('hidden');
+    if (btn.dataset.tab === 'logs') loadLogs();
+  };
+});
+
+/* ---------------- EMBED CODE ---------------- */
+function buildEmbedCode() {
+  var origin = location.origin;
+  $('embedCode').value =
+    '<!-- ===== Chat Widget CS ===== -->\n' +
+    '<script>\n' +
+    '  window.CHAT_WIDGET_CONFIG = {\n' +
+    "    whatsapp: '6281234567890' // GANTI: nomor WA CS Anda\n" +
+    '  };\n' +
+    '<\/script>\n' +
+    '<script src="' + origin + '/widget.js" async><\/script>\n' +
+    '<!-- ===== /Chat Widget CS ===== -->';
+}
+
+function copyText(text, okMsg) {
+  function done() { toast(okMsg); }
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text); done(); });
+  } else {
+    fallbackCopy(text); done();
+  }
+}
+function fallbackCopy(text) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); } catch (e) {}
+  document.body.removeChild(ta);
+}
+
+$('btnCopyEmbed').onclick = function () { copyText($('embedCode').value, 'Kode embed tersalin ✓'); };
+
+$('btnDlExample').onclick = function () {
+  var origin = location.origin;
+  var html =
+    '<!DOCTYPE html>\n<html lang="id">\n<head>\n' +
+    '  <meta charset="UTF-8">\n' +
+    '  <meta name="viewport" content="width=device-width, initial-scale=1">\n' +
+    '  <title>Website Saya + Chat Widget</title>\n' +
+    '<\/head>\n<body>\n' +
+    '  <h1>Website Saya</h1>\n' +
+    '  <p>Chat widget muncul di pojok kanan bawah.</p>\n\n' +
+    '  <!-- ===== Chat Widget CS ===== -->\n' +
+    '  <script>\n' +
+    '    window.CHAT_WIDGET_CONFIG = {\n' +
+    "      whatsapp: '6281234567890' // GANTI: nomor WA CS Anda\n" +
+    '    };\n' +
+    '  <\/script>\n' +
+    '  <script src="' + origin + '/widget.js" async><\/script>\n' +
+    '  <!-- ===== /Chat Widget CS ===== -->\n' +
+    '<\/body>\n<\/html>\n';
+  var blob = new Blob([html], { type: 'text/html' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'index.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  toast('index.html example terunduh ✓');
+};
+
+/* ---------------- LOGS ---------------- */
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+async function loadLogs() {
+  $('logsError').classList.add('hidden');
+  var r = await sb.from('chat_logs').select('*').order('created_at', { ascending: false }).limit(500);
+  if (r.error) {
+    allLogs = [];
+    var e = $('logsError');
+    e.textContent = 'Gagal memuat log: ' + r.error.message + ' — pastikan SQL setup sudah dijalankan (tab Setup SQL) dan Anda sudah login.';
+    e.classList.remove('hidden');
+  } else {
+    allLogs = r.data || [];
+  }
+  renderLogs();
+}
+
+function renderLogs() {
+  var sessions = {};
+  var fotoCount = 0;
+  allLogs.forEach(function (l) {
+    sessions[l.session_id] = true;
+    if (l.image_url) fotoCount++;
+  });
+  $('statPesan').textContent = allLogs.length;
+  $('statSesi').textContent = Object.keys(sessions).length;
+  $('statFoto').textContent = fotoCount;
+
+  // isi dropdown sesi (pertahankan pilihan)
+  var sel = $('filterSesi');
+  var prev = sel.value;
+  sel.innerHTML = '<option value="">Semua Sesi</option>';
+  Object.keys(sessions).forEach(function (sid) {
+    var o = document.createElement('option');
+    o.value = sid; o.textContent = sid;
+    sel.appendChild(o);
+  });
+  sel.value = prev;
+
+  var filter = sel.value;
+  var rows = allLogs.filter(function (l) { return !filter || l.session_id === filter; });
+
+  var body = $('logsBody');
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="6" class="py-8 text-center text-slate-400 text-sm">Belum ada pesan. Coba kirim dari <a href="example.html" target="_blank" class="text-emerald-700 underline">example.html</a>.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = rows.map(function (l) {
+    var waktu = new Date(l.created_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    var dari = l.sender === 'user'
+      ? '<span class="inline-block text-[11px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Pembeli</span>'
+      : '<span class="inline-block text-[11px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Bot</span>';
+    var foto = l.image_url
+      ? '<a href="' + esc(l.image_url) + '" target="_blank"><img class="thumb" src="' + esc(l.image_url) + '" alt="foto" loading="lazy"></a>'
+      : '<span class="text-slate-300">—</span>';
+    return '<tr class="border-b border-slate-100 hover:bg-slate-50 align-top">' +
+      '<td class="py-2.5 pr-3 text-xs text-slate-500 whitespace-nowrap">' + esc(waktu) + '</td>' +
+      '<td class="py-2.5 pr-3 font-mono text-[11px] text-slate-400">' + esc(l.session_id) + '</td>' +
+      '<td class="py-2.5 pr-3">' + dari + '</td>' +
+      '<td class="py-2.5 pr-3 text-slate-700 max-w-[280px] break-words">' + esc(l.message || '') + '</td>' +
+      '<td class="py-2.5 pr-3">' + foto + '</td>' +
+      '<td class="py-2.5"><button data-del="' + l.id + '" class="text-[11px] font-bold text-red-600 hover:bg-red-50 border border-red-200 rounded-lg px-2 py-1 transition">Hapus Pesan</button></td>' +
+      '</tr>';
+  }).join('');
+}
+
+$('logsBody').addEventListener('click', async function (e) {
+  var btn = e.target.closest('button[data-del]');
+  if (!btn) return;
+  if (!confirm('Hapus pesan ini?')) return;
+  var r = await sb.from('chat_logs').delete().eq('id', btn.dataset.del);
+  if (r.error) toast('Gagal: ' + r.error.message);
+  else { toast('Pesan dihapus ✓'); loadLogs(); }
+});
+
+$('filterSesi').addEventListener('change', renderLogs);
+$('btnRefresh').addEventListener('click', function () { loadLogs(); toast('Log dimuat ulang ↻'); });
+
+$('btnHapusSesi').addEventListener('click', async function () {
+  var sid = $('filterSesi').value;
+  if (!sid) return toast('Pilih dulu sesi di dropdown filter');
+  if (!confirm('Hapus SEMUA pesan dari sesi "' + sid + '"?')) return;
+  var r = await sb.from('chat_logs').delete().eq('session_id', sid);
+  if (r.error) toast('Gagal: ' + r.error.message);
+  else { toast('Sesi ' + sid + ' dihapus ✓'); loadLogs(); }
+});
+
+$('btnResetAll').addEventListener('click', async function () {
+  if (!confirm('⚠️ RESET TOTAL!\n\nSemua chat logs akan dihapus dan semua foto di storage "chat-media" akan dihapus permanen.\n\nLanjutkan?')) return;
+  if (!confirm('Yakin 100%? Data yang dihapus TIDAK bisa dikembalikan.')) return;
+
+  var btn = $('btnResetAll');
+  btn.disabled = true; btn.textContent = 'Membersihkan...';
+  try {
+    var r = await sb.from('chat_logs').delete().neq('id', 0);
+    if (r.error) { toast('Gagal hapus tabel: ' + r.error.message); return; }
+
+    // Bersihkan semua file di bucket chat-media
+    var bucket = sb.storage.from('chat-media');
+    var top = await bucket.list('', { limit: 1000 });
+    var paths = [];
+    var items = (top && top.data) || [];
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      if (it.id) {
+        paths.push(it.name); // file di root
+      } else {
+        var sub = await bucket.list(it.name, { limit: 1000 });
+        ((sub && sub.data) || []).forEach(function (f) { paths.push(it.name + '/' + f.name); });
+      }
+    }
+    if (paths.length) {
+      var rm = await bucket.remove(paths);
+      if (rm.error) toast('Log terhapus, tapi ada foto gagal dihapus: ' + rm.error.message);
+    }
+    toast('Semua data & foto dibersihkan ✓');
+    loadLogs();
+  } finally {
+    btn.disabled = false; btn.textContent = '⚠️ Reset / Clear All Data';
+  }
+});
+
+/* ---------------- SQL TAB ---------------- */
+fetch('supabase-setup.sql')
+  .then(function (r) { return r.ok ? r.text() : Promise.reject(); })
+  .then(function (sql) { $('sqlCode').textContent = sql; })
+  .catch(function () { $('sqlCode').textContent = 'Gagal memuat supabase-setup.sql — buka file langsung dari server Anda.'; });
+
+$('btnCopySql').onclick = function () { copyText($('sqlCode').textContent, 'SQL tersalin ✓'); };
+</script>
+</body>
+</html>
