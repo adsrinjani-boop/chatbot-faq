@@ -4,27 +4,39 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ChatWidget CS — Admin Panel</title>
-  <meta name="description" content="Dashboard admin ChatWidget CS: kode embed, download widget.js, activity & chat logs, dan setup SQL Supabase.">
+  <meta name="description" content="Dashboard admin ChatWidget CS: pengaturan widget, kelola FAQ, kode embed, dan activity logs.">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    pre.sql { max-height: 420px; overflow: auto; }
-    .thumb { max-width: 72px; max-height: 72px; border-radius: 8px; cursor: pointer; border: 1px solid #e2e8f0; }
-    #toast { transition: opacity .3s, transform .3s; }
+    :root{color-scheme:light}
+    body{-webkit-font-smoothing:antialiased}
+    pre.sql{max-height:420px;overflow:auto}
+    .thumb{max-width:72px;max-height:72px;border-radius:8px;cursor:pointer;border:1px solid #e2e8f0}
+    #toast{transition:opacity .3s,transform .3s}
+    .icon{width:18px;height:18px;flex-shrink:0}
+    .icon-sm{width:15px;height:15px;flex-shrink:0}
+    input[type="color"]{-webkit-appearance:none;appearance:none;border:none;padding:0;background:none;cursor:pointer}
+    input[type="color"]::-webkit-color-swatch-wrapper{padding:0}
+    input[type="color"]::-webkit-color-swatch{border:1px solid #e2e8f0;border-radius:8px}
+    ::-webkit-scrollbar{width:8px;height:8px}
+    ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:8px}
+    ::-webkit-scrollbar-track{background:transparent}
   </style>
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen">
+<body class="bg-slate-50 text-slate-800 min-h-screen">
 
 <!-- ==================== VIEW: AUTH ==================== -->
 <div id="viewAuth" class="min-h-screen flex items-center justify-center p-4">
   <div class="w-full max-w-sm">
     <div class="text-center mb-6">
-      <div class="w-14 h-14 mx-auto rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-2xl shadow-lg">💬</div>
-      <h1 class="mt-3 text-2xl font-bold">ChatWidget CS</h1>
+      <div class="w-14 h-14 mx-auto rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-lg">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="w-7 h-7"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8Z"/></svg>
+      </div>
+      <h1 class="mt-3 text-2xl font-bold tracking-tight">ChatWidget CS</h1>
       <p class="text-sm text-slate-500">Masuk ke Admin Panel</p>
     </div>
 
-    <div class="bg-white rounded-2xl shadow-lg p-6">
+    <div class="bg-white rounded-2xl shadow-lg shadow-slate-200/60 border border-slate-100 p-6">
       <div class="grid grid-cols-2 gap-1 bg-slate-100 rounded-lg p-1 mb-5 text-sm font-semibold">
         <button id="tabLogin" class="py-2 rounded-md bg-white shadow text-emerald-700">Masuk</button>
         <button id="tabRegister" class="py-2 rounded-md text-slate-500">Daftar</button>
@@ -32,11 +44,11 @@
 
       <label class="block text-xs font-semibold text-slate-500 mb-1">EMAIL</label>
       <input id="authEmail" type="email" placeholder="admin@gmail.com"
-        class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 focus:outline-none focus:border-emerald-500">
+        class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500">
 
       <label class="block text-xs font-semibold text-slate-500 mb-1">PASSWORD</label>
       <input id="authPass" type="password" placeholder="Minimal 6 karakter"
-        class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-4 focus:outline-none focus:border-emerald-500">
+        class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500">
 
       <div id="authError" class="hidden mb-3 text-sm bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2"></div>
       <div id="authInfo" class="hidden mb-3 text-sm bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2"></div>
@@ -48,7 +60,7 @@
 
       <p class="mt-4 text-xs text-slate-400 text-center leading-relaxed">
         Email dummy boleh dipakai, tapi domain harus valid (mis. <code>@gmail.com</code>).<br>
-        Pastikan <em>"Confirm email"</em> sudah dimatikan di Supabase — lihat tab <strong>Setup SQL</strong>.
+        Pastikan <em>"Confirm email"</em> sudah dimatikan di pengaturan Authentication Supabase.
       </p>
     </div>
   </div>
@@ -58,68 +70,177 @@
 <div id="viewApp" class="hidden">
   <header class="bg-emerald-600 text-white shadow-md">
     <div class="max-w-6xl mx-auto px-4 pt-3 flex items-center gap-3">
-      <div class="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center text-lg">💬</div>
+      <div class="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8Z"/></svg>
+      </div>
       <div class="min-w-0">
         <h1 class="font-bold leading-tight">ChatWidget CS</h1>
         <p id="userEmail" class="text-xs text-emerald-100 truncate"></p>
       </div>
-      <button id="btnLogout" class="ml-auto text-xs font-semibold bg-white/15 hover:bg-white/25 rounded-lg px-3 py-2 transition">
-        Keluar ⎋
+      <button id="btnLogout" class="ml-auto flex items-center gap-1.5 text-xs font-semibold bg-white/15 hover:bg-white/25 rounded-lg px-3 py-2 transition">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="icon-sm"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M18 12H9m9 0-3-3m3 3-3 3"/></svg>
+        Keluar
       </button>
     </div>
-    <nav class="max-w-6xl mx-auto px-4 mt-2 flex gap-1 text-sm font-semibold">
-      <button data-tab="embed" class="tabbtn px-4 py-2.5 rounded-t-lg bg-white text-emerald-700">📦 Kode Embed</button>
-      <button data-tab="logs" class="tabbtn px-4 py-2.5 rounded-t-lg text-emerald-100 hover:bg-white/10">📊 Activity &amp; Logs</button>
-      <button data-tab="faq" class="tabbtn px-4 py-2.5 rounded-t-lg text-emerald-100 hover:bg-white/10">❓ Kelola FAQ</button>
-      <button data-tab="sql" class="tabbtn px-4 py-2.5 rounded-t-lg text-emerald-100 hover:bg-white/10">🛠️ Setup SQL</button>
+    <nav class="max-w-6xl mx-auto px-4 mt-3 flex gap-1 text-sm font-semibold overflow-x-auto">
+      <button data-tab="settings" class="tabbtn flex items-center gap-1.5 px-4 py-2.5 rounded-t-lg bg-white text-emerald-700 whitespace-nowrap">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="icon-sm"><path stroke-linecap="round" stroke-linejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 0 1 1.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.559.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 0 1-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 0 1-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 0 1 .12-1.45l.773-.773a1.125 1.125 0 0 1 1.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
+        Pengaturan Widget
+      </button>
+      <button data-tab="faq" class="tabbtn flex items-center gap-1.5 px-4 py-2.5 rounded-t-lg text-emerald-100 hover:bg-white/10 whitespace-nowrap">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="icon-sm"><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 17.25h.007v.008H12v-.008Z"/></svg>
+        Kelola FAQ
+      </button>
+      <button data-tab="logs" class="tabbtn flex items-center gap-1.5 px-4 py-2.5 rounded-t-lg text-emerald-100 hover:bg-white/10 whitespace-nowrap">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="icon-sm"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></svg>
+        Activity &amp; Chat Logs
+      </button>
+      <button data-tab="embed" class="tabbtn flex items-center gap-1.5 px-4 py-2.5 rounded-t-lg text-emerald-100 hover:bg-white/10 whitespace-nowrap">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="icon-sm"><path stroke-linecap="round" stroke-linejoin="round" d="m17.25 6.75 4.5 4.5-4.5 4.5m-10.5-9-4.5 4.5 4.5 4.5m6.75-12-3 16.5"/></svg>
+        Kode Embed &amp; Download
+      </button>
     </nav>
   </header>
 
   <main class="max-w-6xl mx-auto p-4 space-y-4">
 
-    <!-- ========== TAB: EMBED ========== -->
-    <section id="tab-embed" class="space-y-4">
-      <div class="bg-white rounded-2xl shadow p-5">
-        <h2 class="font-bold text-lg">Script Embed</h2>
-        <p class="text-sm text-slate-500 mt-1">Copy kode ini, lalu paste sebelum <code>&lt;/body&gt;</code> di website manapun. Ganti nomor WhatsApp dengan nomor CS Anda.</p>
-        <textarea id="embedCode" readonly rows="7"
-          class="mt-3 w-full font-mono text-xs bg-slate-900 text-emerald-300 rounded-xl p-4 focus:outline-none"></textarea>
-        <button id="btnCopyEmbed" class="mt-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition">
-          📋 Copy Kode Embed
+    <!-- ========== TAB: PENGATURAN WIDGET ========== -->
+    <section id="tab-settings" class="space-y-4">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+        <h2 class="font-bold text-lg">Identitas &amp; Kontak</h2>
+        <p class="text-sm text-slate-500 mt-1">Nama bot dan nomor WhatsApp tujuan untuk tombol eskalasi ke CS manusia.</p>
+
+        <div class="mt-4 grid sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">NAMA BOT / CS ASSISTANT</label>
+            <input id="stBotName" type="text" placeholder="CS Support Online"
+              class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">NOMOR WHATSAPP CS</label>
+            <input id="stWhatsapp" type="text" placeholder="6281234567890"
+              class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500">
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+        <h2 class="font-bold text-lg">Warna Widget</h2>
+        <p class="text-sm text-slate-500 mt-1">Atur warna header, tombol mengambang (floating button), dan warna aksen bubble chat pengguna.</p>
+
+        <div class="mt-4 grid sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">WARNA HEADER</label>
+            <div class="flex items-center gap-2 border border-slate-300 rounded-lg px-2 py-1.5">
+              <input id="stHeaderColor" type="color" value="#16a34a" class="w-9 h-9 rounded-lg">
+              <input id="stHeaderColorHex" type="text" value="#16a34a" class="w-full text-sm font-mono focus:outline-none">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">WARNA FLOATING BUTTON</label>
+            <div class="flex items-center gap-2 border border-slate-300 rounded-lg px-2 py-1.5">
+              <input id="stButtonColor" type="color" value="#16a34a" class="w-9 h-9 rounded-lg">
+              <input id="stButtonColorHex" type="text" value="#16a34a" class="w-full text-sm font-mono focus:outline-none">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">WARNA AKSEN (BUBBLE USER)</label>
+            <div class="flex items-center gap-2 border border-slate-300 rounded-lg px-2 py-1.5">
+              <input id="stAccentColor" type="color" value="#16a34a" class="w-9 h-9 rounded-lg">
+              <input id="stAccentColorHex" type="text" value="#16a34a" class="w-full text-sm font-mono focus:outline-none">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+        <h2 class="font-bold text-lg">Respon Otomatis</h2>
+        <p class="text-sm text-slate-500 mt-1">Pesan sambutan saat widget pertama kali dibuka, dan pesan fallback saat tidak ada FAQ yang cocok dengan pertanyaan pengguna.</p>
+
+        <div class="mt-4 space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">PESAN SAMBUTAN (WELCOME MESSAGE)</label>
+            <textarea id="stGreeting" rows="2" placeholder="Halo! Selamat datang. Ada yang bisa kami bantu?"
+              class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"></textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">PESAN FALLBACK (JIKA TIDAK DITEMUKAN DI FAQ)</label>
+            <textarea id="stFallback" rows="2" placeholder="Maaf, kami belum menemukan jawaban untuk pertanyaan Anda. Silakan hubungi CS kami."
+              class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"></textarea>
+          </div>
+        </div>
+
+        <div id="settingsError" class="hidden mt-3 text-sm bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2"></div>
+
+        <button id="btnSaveSettings" class="mt-4 flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="icon-sm"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+          Simpan Pengaturan
         </button>
       </div>
+    </section>
 
-      <div class="bg-white rounded-2xl shadow p-5">
-        <h2 class="font-bold text-lg">Download File Langsung</h2>
-        <p class="text-sm text-slate-500 mt-1">Unduh file widget untuk di-hosting sendiri, beserta contoh HTML siap pakai.</p>
-        <div class="mt-3 flex flex-wrap gap-3">
-          <a href="widget.js" download="widget.js"
-            class="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition">
-            ⬇️ Download widget.js
-          </a>
-          <button id="btnDlExample"
-            class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition">
-            ⬇️ Download index.html Example
-          </button>
+    <!-- ========== TAB: KELOLA FAQ ========== -->
+    <section id="tab-faq" class="hidden space-y-4">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+        <h2 id="faqFormTitle" class="font-bold text-lg">Tambah FAQ Baru</h2>
+        <p class="text-sm text-slate-500 mt-1">FAQ muncul sebagai tombol pilihan cepat saat widget dibuka, dan juga dipakai untuk mencocokkan kata kunci saat pengunjung mengetik pertanyaan secara manual.</p>
+
+        <div class="mt-3 space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">PERTANYAAN</label>
+            <input id="faqQuestion" type="text" placeholder="Bagaimana cara melakukan pembayaran?"
+              class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500">
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">KATA KUNCI / KEYWORDS <span class="font-normal normal-case text-slate-400">(pisahkan dengan koma)</span></label>
+            <input id="faqKeywords" type="text" placeholder="ongkir, biaya kirim, tarif, pengiriman"
+              class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500">
+            <p class="text-xs text-slate-400 mt-1">Widget akan mencocokkan kata kunci ini dengan pesan yang diketik pengunjung untuk menampilkan jawaban otomatis.</p>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">JAWABAN</label>
+            <textarea id="faqAnswer" rows="3" placeholder="Pembayaran bisa via transfer bank, e-wallet, atau QRIS."
+              class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"></textarea>
+          </div>
+
+          <div id="faqFormError" class="hidden text-sm bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2"></div>
+
+          <div class="flex flex-wrap gap-2">
+            <button id="btnFaqSubmit" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="icon-sm"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+              <span>Tambah FAQ</span>
+            </button>
+            <button id="btnFaqCancelEdit" class="hidden bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold px-4 py-2.5 rounded-lg transition">
+              Batal Edit
+            </button>
+          </div>
         </div>
-        <p class="mt-3 text-xs text-slate-400">File <code>index.html</code> yang diunduh sudah berisi kode embed dengan URL hosting ini — tinggal upload berdua dengan <code>widget.js</code>.</p>
       </div>
 
-      <div class="bg-white rounded-2xl shadow p-5">
-        <h2 class="font-bold text-lg">Konfigurasi Opsional</h2>
-        <p class="text-sm text-slate-500 mt-1">Semua opsi di-set lewat <code>window.CHAT_WIDGET_CONFIG</code> sebelum script di-load:</p>
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+        <div class="flex flex-wrap items-center gap-2">
+          <h2 class="font-bold text-lg mr-auto">Daftar FAQ</h2>
+          <button id="btnFaqRefresh" class="flex items-center gap-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg transition">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="icon-sm"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+            Refresh
+          </button>
+        </div>
+
+        <div id="faqError" class="hidden mt-3 text-sm bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2"></div>
+
         <div class="mt-3 overflow-x-auto">
           <table class="w-full text-sm">
-            <thead><tr class="text-left text-xs text-slate-400 border-b">
-              <th class="py-2 pr-4">KEY</th><th class="py-2 pr-4">DEFAULT</th><th class="py-2">FUNGSI</th>
-            </tr></thead>
-            <tbody class="text-slate-600">
-              <tr class="border-b border-slate-100"><td class="py-2 pr-4 font-mono text-xs">whatsapp</td><td class="py-2 pr-4 font-mono text-xs">6281234567890</td><td class="py-2">Nomor WA tujuan tombol eskalasi</td></tr>
-              <tr class="border-b border-slate-100"><td class="py-2 pr-4 font-mono text-xs">botName</td><td class="py-2 pr-4 font-mono text-xs">CS Assistant</td><td class="py-2">Nama bot di header chat</td></tr>
-              <tr class="border-b border-slate-100"><td class="py-2 pr-4 font-mono text-xs">primary</td><td class="py-2 pr-4 font-mono text-xs">#16a34a</td><td class="py-2">Warna utama widget</td></tr>
-              <tr class="border-b border-slate-100"><td class="py-2 pr-4 font-mono text-xs">autoOpenDelay</td><td class="py-2 pr-4 font-mono text-xs">5000</td><td class="py-2">Delay auto-popup (ms)</td></tr>
-              <tr><td class="py-2 pr-4 font-mono text-xs">greeting</td><td class="py-2 pr-4 font-mono text-xs">Halo! 👋 ...</td><td class="py-2">Pesan sapaan pertama</td></tr>
-            </tbody>
+            <thead>
+              <tr class="text-left text-xs text-slate-400 border-b">
+                <th class="py-2 pr-3">PERTANYAAN</th>
+                <th class="py-2 pr-3">KEYWORDS</th>
+                <th class="py-2 pr-3">JAWABAN</th>
+                <th class="py-2">AKSI</th>
+              </tr>
+            </thead>
+            <tbody id="faqBody"></tbody>
           </table>
         </div>
       </div>
@@ -128,34 +249,33 @@
     <!-- ========== TAB: LOGS ========== -->
     <section id="tab-logs" class="hidden space-y-4">
       <div class="grid grid-cols-3 gap-3">
-        <div class="bg-white rounded-2xl shadow p-4 text-center">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 text-center">
           <div id="statPesan" class="text-2xl font-bold text-emerald-600">0</div>
           <div class="text-xs text-slate-500 font-semibold mt-1">TOTAL PESAN</div>
         </div>
-        <div class="bg-white rounded-2xl shadow p-4 text-center">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 text-center">
           <div id="statSesi" class="text-2xl font-bold text-emerald-600">0</div>
           <div class="text-xs text-slate-500 font-semibold mt-1">TOTAL SESI</div>
         </div>
-        <div class="bg-white rounded-2xl shadow p-4 text-center">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 text-center">
           <div id="statFoto" class="text-2xl font-bold text-emerald-600">0</div>
           <div class="text-xs text-slate-500 font-semibold mt-1">FOTO MASUK</div>
         </div>
       </div>
 
-      <div class="bg-white rounded-2xl shadow p-5">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
         <div class="flex flex-wrap items-center gap-2">
           <h2 class="font-bold text-lg mr-auto">Activity &amp; Chat Logs</h2>
           <select id="filterSesi" class="border border-slate-300 rounded-lg px-2.5 py-2 text-xs font-semibold focus:outline-none focus:border-emerald-500 max-w-[180px]">
             <option value="">Semua Sesi</option>
           </select>
-          <button id="btnHapusSesi" class="text-xs font-bold bg-orange-100 hover:bg-orange-200 text-orange-700 px-3 py-2 rounded-lg transition">
-            🗑 Hapus Sesi
+          <button id="btnHapusSesi" class="flex items-center gap-1.5 text-xs font-bold bg-orange-100 hover:bg-orange-200 text-orange-700 px-3 py-2 rounded-lg transition">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="icon-sm"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+            Hapus Sesi
           </button>
-          <button id="btnRefresh" class="text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg transition">
-            ↻ Refresh
-          </button>
-          <button id="btnResetAll" class="text-xs font-bold bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg transition">
-            ⚠️ Reset / Clear All Data
+          <button id="btnRefresh" class="flex items-center gap-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg transition">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="icon-sm"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+            Refresh
           </button>
         </div>
 
@@ -177,127 +297,62 @@
           </table>
         </div>
       </div>
+
+      <div class="bg-white rounded-2xl shadow-sm border border-red-100 p-5">
+        <h2 class="font-bold text-lg text-red-700">Zona Berbahaya</h2>
+        <p class="text-sm text-slate-500 mt-1">Menghapus seluruh chat logs dan semua foto di storage <code>chat-media</code> secara permanen.</p>
+        <button id="btnResetAll" class="mt-3 flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="icon-sm"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-8.625 4.5h.008v.008h-.008v-.008Z"/></svg>
+          <span>Reset / Clear All Data</span>
+        </button>
+      </div>
     </section>
 
-    <!-- ========== TAB: FAQ ========== -->
-    <section id="tab-faq" class="hidden space-y-4">
-      <div class="bg-amber-50 border border-amber-300 rounded-2xl p-5">
-        <h2 class="font-bold text-amber-800">⚠️ Perlu Tabel <code>faq_data</code> di Supabase</h2>
-        <p class="text-sm text-amber-800 mt-1 leading-relaxed">
-          Jalankan SQL berikut sekali saja di <strong>Supabase Dashboard → SQL Editor</strong> sebelum memakai fitur ini
-          (aman dijalankan meski tabel sudah ada — pakai <code>IF NOT EXISTS</code>).
-        </p>
-        <pre class="sql mt-3 font-mono text-xs bg-slate-900 text-emerald-300 rounded-xl p-4"><code id="faqSqlCode">create table if not exists public.faq_data (
-  id bigint generated always as identity primary key,
-  question text not null,
-  answer text not null,
-  created_at timestamptz not null default now()
-);
-
-alter table public.faq_data enable row level security;
-
-create policy if not exists "faq_public_read" on public.faq_data
-  for select using (true);
-
-create policy if not exists "faq_admin_write" on public.faq_data
-  for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');</code></pre>
-        <button id="btnCopyFaqSql" class="mt-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition">
-          📋 Copy SQL
+    <!-- ========== TAB: EMBED ========== -->
+    <section id="tab-embed" class="hidden space-y-4">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+        <h2 class="font-bold text-lg">Script Embed</h2>
+        <p class="text-sm text-slate-500 mt-1">Copy kode ini, lalu paste sebelum <code>&lt;/body&gt;</code> di website manapun. Nama bot, warna, dan pesan sudah otomatis mengikuti tab Pengaturan Widget.</p>
+        <textarea id="embedCode" readonly rows="5"
+          class="mt-3 w-full font-mono text-xs bg-slate-900 text-emerald-300 rounded-xl p-4 focus:outline-none"></textarea>
+        <button id="btnCopyEmbed" class="mt-3 flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="icon-sm"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/></svg>
+          Copy Kode Embed
         </button>
       </div>
 
-      <div class="bg-white rounded-2xl shadow p-5">
-        <h2 id="faqFormTitle" class="font-bold text-lg">Tambah FAQ Baru</h2>
-        <p class="text-sm text-slate-500 mt-1">FAQ ini akan otomatis muncul sebagai tombol pilihan cepat di widget chatbot saat pertama kali dibuka pengunjung.</p>
-
-        <div class="mt-3">
-          <label class="block text-xs font-semibold text-slate-500 mb-1">PERTANYAAN</label>
-          <input id="faqQuestion" type="text" placeholder="Contoh: Bagaimana cara melakukan pembayaran?"
-            class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 focus:outline-none focus:border-emerald-500">
-
-          <label class="block text-xs font-semibold text-slate-500 mb-1">JAWABAN</label>
-          <textarea id="faqAnswer" rows="3" placeholder="Contoh: Pembayaran bisa via transfer bank, e-wallet, atau QRIS."
-            class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 focus:outline-none focus:border-emerald-500"></textarea>
-
-          <div id="faqFormError" class="hidden mb-3 text-sm bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2"></div>
-
-          <div class="flex flex-wrap gap-2">
-            <button id="btnFaqSubmit" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition">
-              ➕ Tambah FAQ
-            </button>
-            <button id="btnFaqCancelEdit" class="hidden bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold px-4 py-2.5 rounded-lg transition">
-              Batal Edit
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-white rounded-2xl shadow p-5">
-        <div class="flex flex-wrap items-center gap-2">
-          <h2 class="font-bold text-lg mr-auto">Daftar FAQ</h2>
-          <button id="btnFaqRefresh" class="text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg transition">
-            ↻ Refresh
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+        <h2 class="font-bold text-lg">Download File Langsung</h2>
+        <p class="text-sm text-slate-500 mt-1">Unduh file widget untuk di-hosting sendiri, beserta contoh HTML siap pakai.</p>
+        <div class="mt-3 flex flex-wrap gap-3">
+          <a href="widget.js" download="widget.js"
+            class="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="icon-sm"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+            Download widget.js
+          </a>
+          <button id="btnDlExample"
+            class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="icon-sm"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+            Download index.html Example
           </button>
         </div>
+        <p class="mt-3 text-xs text-slate-400">File <code>index.html</code> yang diunduh sudah berisi kode embed dengan URL hosting ini — tinggal upload berdua dengan <code>widget.js</code>.</p>
+      </div>
 
-        <div id="faqError" class="hidden mt-3 text-sm bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2"></div>
-
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+        <h2 class="font-bold text-lg">Konfigurasi Lanjutan (Opsional)</h2>
+        <p class="text-sm text-slate-500 mt-1">Nama bot, warna, WhatsApp, pesan sambutan, dan fallback sudah dikelola otomatis lewat tab <strong>Pengaturan Widget</strong>. Opsi berikut hanya untuk pengaturan teknis tambahan lewat <code>window.CHAT_WIDGET_CONFIG</code> sebelum script di-load:</p>
         <div class="mt-3 overflow-x-auto">
           <table class="w-full text-sm">
-            <thead>
-              <tr class="text-left text-xs text-slate-400 border-b">
-                <th class="py-2 pr-3">PERTANYAAN</th>
-                <th class="py-2 pr-3">JAWABAN</th>
-                <th class="py-2">AKSI</th>
-              </tr>
-            </thead>
-            <tbody id="faqBody"></tbody>
+            <thead><tr class="text-left text-xs text-slate-400 border-b">
+              <th class="py-2 pr-4">KEY</th><th class="py-2 pr-4">DEFAULT</th><th class="py-2">FUNGSI</th>
+            </tr></thead>
+            <tbody class="text-slate-600">
+              <tr class="border-b border-slate-100"><td class="py-2 pr-4 font-mono text-xs">autoOpenDelay</td><td class="py-2 pr-4 font-mono text-xs">5000</td><td class="py-2">Delay auto-popup widget (ms)</td></tr>
+              <tr><td class="py-2 pr-4 font-mono text-xs">whatsapp</td><td class="py-2 pr-4 font-mono text-xs">(dari Pengaturan Widget)</td><td class="py-2">Override manual nomor WA jika diperlukan</td></tr>
+            </tbody>
           </table>
         </div>
-      </div>
-    </section>
-
-    <!-- ========== TAB: SQL ========== -->
-    <section id="tab-sql" class="hidden space-y-4">
-      <div class="bg-amber-50 border border-amber-300 rounded-2xl p-5">
-        <h2 class="font-bold text-amber-800">⚠️ Langkah 1 — Matikan Verifikasi Email (WAJIB)</h2>
-        <p class="text-sm text-amber-800 mt-1 leading-relaxed">
-          Agar pendaftaran admin bisa pakai email dummy tanpa verifikasi:<br>
-          <strong>Supabase Dashboard → Authentication → Sign In / Providers → Email → matikan <em>"Confirm email"</em> → Save.</strong><br>
-          Tanpa ini, pendaftaran akan gagal kena <em>email rate limit</em> / diminta verifikasi.
-          Catatan: domain email harus tetap terlihat valid (mis. <code>@gmail.com</code>) — domain <code>example.com</code> ditolak Supabase.
-        </p>
-      </div>
-
-      <div class="bg-white rounded-2xl shadow p-5">
-        <h2 class="font-bold text-lg">Langkah 2 — Jalankan SQL Ini</h2>
-        <p class="text-sm text-slate-500 mt-1">
-          Copy-paste ke <strong>Supabase Dashboard → SQL Editor → New query → Run</strong>.
-          Membuat tabel <code>chat_logs</code>, RLS policy (READ/INSERT/DELETE), dan bucket Storage <code>chat-media</code>.
-        </p>
-        <pre class="sql mt-3 font-mono text-xs bg-slate-900 text-emerald-300 rounded-xl p-4"><code id="sqlCode">Memuat supabase-setup.sql ...</code></pre>
-        <div class="mt-3 flex flex-wrap gap-3">
-          <button id="btnCopySql" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition">
-            📋 Copy SQL
-          </button>
-          <a href="supabase-setup.sql" download="supabase-setup.sql"
-            class="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition">
-            ⬇️ Download supabase-setup.sql
-          </a>
-        </div>
-      </div>
-
-      <div class="bg-white rounded-2xl shadow p-5">
-        <h2 class="font-bold text-lg">Langkah 3 — Tes</h2>
-        <ol class="text-sm text-slate-600 mt-1 list-decimal list-inside space-y-1 leading-relaxed">
-          <li>Buka <a href="example.html" target="_blank" class="text-emerald-700 font-semibold underline">example.html</a>, kirim pesan &amp; foto dari widget.</li>
-          <li>Kembali ke sini, buka tab <strong>Activity &amp; Logs</strong> — pesan harus muncul.</li>
-          <li>Pasang kode embed di website Anda. Selesai! 🎉</li>
-        </ol>
-        <p class="mt-3 text-xs text-slate-400 leading-relaxed">
-          Catatan keamanan: setiap akun yang terdaftar di aplikasi ini bisa membaca &amp; menghapus semua log.
-          Untuk multi-admin yang lebih ketat, batasi policy <code>admin_read</code>/<code>admin_delete</code> ke email/user id tertentu.
-        </p>
       </div>
     </section>
   </main>
@@ -316,6 +371,7 @@ var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 var $ = function (id) { return document.getElementById(id); };
 var allLogs = [];
+var TABS = ['settings', 'faq', 'logs', 'embed'];
 
 /* ---------------- TOAST ---------------- */
 var toastTimer = null;
@@ -325,6 +381,12 @@ function toast(msg) {
   t.classList.remove('hidden');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(function () { t.classList.add('hidden'); }, 2600);
+}
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 /* ---------------- AUTH ---------------- */
@@ -356,9 +418,9 @@ function authInfo(msg) {
 
 function friendlyError(err) {
   var m = (err && err.message) || 'Terjadi kesalahan';
-  if (/rate limit/i.test(m)) return 'Kena batas kirim email Supabase. Matikan dulu "Confirm email" di dashboard Supabase (panduan: tab Setup SQL), lalu coba lagi.';
+  if (/rate limit/i.test(m)) return 'Kena batas kirim email Supabase. Matikan dulu "Confirm email" di pengaturan Authentication Supabase, lalu coba lagi.';
   if (/invalid login/i.test(m)) return 'Email atau password salah.';
-  if (/not confirmed/i.test(m)) return 'Email belum dikonfirmasi. Matikan "Confirm email" — lihat tab Setup SQL.';
+  if (/not confirmed/i.test(m)) return 'Email belum dikonfirmasi. Matikan "Confirm email" di pengaturan Authentication Supabase.';
   if (/invalid/i.test(m) && /email/i.test(m)) return 'Domain email tidak valid. Pakai domain umum seperti @gmail.com.';
   return m;
 }
@@ -379,9 +441,8 @@ async function submitAuth() {
       var r2 = await sb.auth.signUp({ email: email, password: pass });
       if (r2.error) authError(friendlyError(r2.error));
       else if (!r2.data.session) {
-        authInfo('Pendaftaran diterima, tapi Supabase masih meminta <strong>verifikasi email</strong>. Matikan "Confirm email" dulu (panduan: tab Setup SQL langkah 1), lalu daftar ulang.');
+        authInfo('Pendaftaran diterima, tapi Supabase masih meminta <strong>verifikasi email</strong>. Matikan "Confirm email" di pengaturan Authentication Supabase, lalu daftar ulang.');
       }
-      // jika session ada, onAuthStateChange akan membuka dashboard otomatis
     }
   } finally {
     $('authSubmit').disabled = false;
@@ -394,7 +455,7 @@ function toggleViews(session) {
     $('viewAuth').classList.add('hidden');
     $('viewApp').classList.remove('hidden');
     $('userEmail').textContent = session.user.email || '';
-    buildEmbedCode();
+    loadSettings();
     loadLogs();
   } else {
     $('viewApp').classList.add('hidden');
@@ -415,29 +476,17 @@ sb.auth.getSession().then(function (r) { toggleViews(r.data.session); });
 var tabBtns = document.querySelectorAll('.tabbtn');
 tabBtns.forEach(function (btn) {
   btn.onclick = function () {
-    tabBtns.forEach(function (b) { b.className = 'tabbtn px-4 py-2.5 rounded-t-lg text-emerald-100 hover:bg-white/10'; });
-    btn.className = 'tabbtn px-4 py-2.5 rounded-t-lg bg-white text-emerald-700';
-    ['embed', 'logs', 'faq', 'sql'].forEach(function (t) { $('tab-' + t).classList.add('hidden'); });
+    tabBtns.forEach(function (b) { b.className = 'tabbtn flex items-center gap-1.5 px-4 py-2.5 rounded-t-lg text-emerald-100 hover:bg-white/10 whitespace-nowrap'; });
+    btn.className = 'tabbtn flex items-center gap-1.5 px-4 py-2.5 rounded-t-lg bg-white text-emerald-700 whitespace-nowrap';
+    TABS.forEach(function (t) { $('tab-' + t).classList.add('hidden'); });
     $('tab-' + btn.dataset.tab).classList.remove('hidden');
     if (btn.dataset.tab === 'logs') loadLogs();
     if (btn.dataset.tab === 'faq') loadFaq();
+    if (btn.dataset.tab === 'embed') buildEmbedCode();
   };
 });
 
-/* ---------------- EMBED CODE ---------------- */
-function buildEmbedCode() {
-  var origin = location.origin;
-  $('embedCode').value =
-    '<!-- ===== Chat Widget CS ===== -->\n' +
-    '<script>\n' +
-    '  window.CHAT_WIDGET_CONFIG = {\n' +
-    "    whatsapp: '6281234567890' // GANTI: nomor WA CS Anda\n" +
-    '  };\n' +
-    '<\/script>\n' +
-    '<script src="' + origin + '/widget.js" async><\/script>\n' +
-    '<!-- ===== /Chat Widget CS ===== -->';
-}
-
+/* ---------------- COPY HELPERS ---------------- */
 function copyText(text, okMsg) {
   function done() { toast(okMsg); }
   if (navigator.clipboard && window.isSecureContext) {
@@ -456,7 +505,100 @@ function fallbackCopy(text) {
   document.body.removeChild(ta);
 }
 
-$('btnCopyEmbed').onclick = function () { copyText($('embedCode').value, 'Kode embed tersalin ✓'); };
+/* ---------------- PENGATURAN WIDGET ---------------- */
+var DEFAULT_SETTINGS = {
+  bot_name: 'CS Assistant',
+  header_color: '#16a34a',
+  button_color: '#16a34a',
+  accent_color: '#16a34a',
+  whatsapp: '6281234567890',
+  greeting: 'Halo! Selamat datang. Ada yang bisa kami bantu?',
+  fallback_message: 'Maaf, kami belum menemukan jawaban untuk pertanyaan Anda. Silakan hubungi CS kami melalui WhatsApp.'
+};
+var currentSettings = null;
+
+function fillSettingsForm(s) {
+  $('stBotName').value = s.bot_name || '';
+  $('stWhatsapp').value = s.whatsapp || '';
+  $('stGreeting').value = s.greeting || '';
+  $('stFallback').value = s.fallback_message || '';
+  setColorPair('stHeaderColor', 'stHeaderColorHex', s.header_color || '#16a34a');
+  setColorPair('stButtonColor', 'stButtonColorHex', s.button_color || '#16a34a');
+  setColorPair('stAccentColor', 'stAccentColorHex', s.accent_color || '#16a34a');
+}
+
+function setColorPair(colorId, hexId, value) {
+  $(colorId).value = value;
+  $(hexId).value = value;
+}
+function syncColorPair(colorId, hexId) {
+  $(colorId).addEventListener('input', function () { $(hexId).value = $(colorId).value; });
+  $(hexId).addEventListener('change', function () {
+    var v = $(hexId).value.trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) $(colorId).value = v;
+  });
+}
+syncColorPair('stHeaderColor', 'stHeaderColorHex');
+syncColorPair('stButtonColor', 'stButtonColorHex');
+syncColorPair('stAccentColor', 'stAccentColorHex');
+
+async function loadSettings() {
+  $('settingsError').classList.add('hidden');
+  var r = await sb.from('widget_settings').select('*').eq('id', 1).maybeSingle();
+  if (r.error) {
+    var e = $('settingsError');
+    e.textContent = 'Gagal memuat pengaturan: ' + r.error.message + ' — pastikan tabel "widget_settings" sudah dibuat.';
+    e.classList.remove('hidden');
+    currentSettings = DEFAULT_SETTINGS;
+  } else {
+    currentSettings = r.data || DEFAULT_SETTINGS;
+  }
+  fillSettingsForm(currentSettings);
+  buildEmbedCode();
+}
+
+async function saveSettings() {
+  $('settingsError').classList.add('hidden');
+  var payload = {
+    id: 1,
+    bot_name: $('stBotName').value.trim() || DEFAULT_SETTINGS.bot_name,
+    header_color: $('stHeaderColorHex').value.trim() || DEFAULT_SETTINGS.header_color,
+    button_color: $('stButtonColorHex').value.trim() || DEFAULT_SETTINGS.button_color,
+    accent_color: $('stAccentColorHex').value.trim() || DEFAULT_SETTINGS.accent_color,
+    whatsapp: $('stWhatsapp').value.trim() || DEFAULT_SETTINGS.whatsapp,
+    greeting: $('stGreeting').value.trim() || DEFAULT_SETTINGS.greeting,
+    fallback_message: $('stFallback').value.trim() || DEFAULT_SETTINGS.fallback_message,
+    updated_at: new Date().toISOString()
+  };
+  var btn = $('btnSaveSettings');
+  btn.disabled = true;
+  try {
+    var r = await sb.from('widget_settings').upsert(payload, { onConflict: 'id' });
+    if (r.error) {
+      var e = $('settingsError');
+      e.textContent = 'Gagal menyimpan: ' + r.error.message;
+      e.classList.remove('hidden');
+      return;
+    }
+    currentSettings = payload;
+    toast('Pengaturan widget tersimpan');
+    buildEmbedCode();
+  } finally {
+    btn.disabled = false;
+  }
+}
+$('btnSaveSettings').addEventListener('click', saveSettings);
+
+/* ---------------- EMBED CODE ---------------- */
+function buildEmbedCode() {
+  var origin = location.origin;
+  $('embedCode').value =
+    '<!-- ===== Chat Widget CS ===== -->\n' +
+    '<script src="' + origin + '/widget.js" async><\/script>\n' +
+    '<!-- ===== /Chat Widget CS ===== -->';
+}
+
+$('btnCopyEmbed').onclick = function () { copyText($('embedCode').value, 'Kode embed tersalin'); };
 
 $('btnDlExample').onclick = function () {
   var origin = location.origin;
@@ -469,11 +611,6 @@ $('btnDlExample').onclick = function () {
     '  <h1>Website Saya</h1>\n' +
     '  <p>Chat widget muncul di pojok kanan bawah.</p>\n\n' +
     '  <!-- ===== Chat Widget CS ===== -->\n' +
-    '  <script>\n' +
-    '    window.CHAT_WIDGET_CONFIG = {\n' +
-    "      whatsapp: '6281234567890' // GANTI: nomor WA CS Anda\n" +
-    '    };\n' +
-    '  <\/script>\n' +
     '  <script src="' + origin + '/widget.js" async><\/script>\n' +
     '  <!-- ===== /Chat Widget CS ===== -->\n' +
     '<\/body>\n<\/html>\n';
@@ -485,23 +622,17 @@ $('btnDlExample').onclick = function () {
   a.click();
   document.body.removeChild(a);
   setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
-  toast('index.html example terunduh ✓');
+  toast('index.html example terunduh');
 };
 
 /* ---------------- LOGS ---------------- */
-function esc(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
-
 async function loadLogs() {
   $('logsError').classList.add('hidden');
   var r = await sb.from('chat_logs').select('*').order('created_at', { ascending: false }).limit(500);
   if (r.error) {
     allLogs = [];
     var e = $('logsError');
-    e.textContent = 'Gagal memuat log: ' + r.error.message + ' — pastikan SQL setup sudah dijalankan (tab Setup SQL) dan Anda sudah login.';
+    e.textContent = 'Gagal memuat log: ' + r.error.message + ' — pastikan Anda sudah login dan tabel "chat_logs" sudah dibuat.';
     e.classList.remove('hidden');
   } else {
     allLogs = r.data || [];
@@ -520,7 +651,6 @@ function renderLogs() {
   $('statSesi').textContent = Object.keys(sessions).length;
   $('statFoto').textContent = fotoCount;
 
-  // isi dropdown sesi (pertahankan pilihan)
   var sel = $('filterSesi');
   var prev = sel.value;
   sel.innerHTML = '<option value="">Semua Sesi</option>';
@@ -536,9 +666,11 @@ function renderLogs() {
 
   var body = $('logsBody');
   if (!rows.length) {
-    body.innerHTML = '<tr><td colspan="6" class="py-8 text-center text-slate-400 text-sm">Belum ada pesan. Coba kirim dari <a href="example.html" target="_blank" class="text-emerald-700 underline">example.html</a>.</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" class="py-8 text-center text-slate-400 text-sm">Belum ada pesan.</td></tr>';
     return;
   }
+
+  var trashIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="icon-sm inline"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9M4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562L4.772 5.79m0 0c.34-.059.68-.114 1.022-.165m12.912 0a48.11 48.11 0 0 1 3.478.397M9 5.79c0-1.18.91-2.164 2.09-2.201a51.964 51.964 0 0 1 3.32 0C15.59 3.626 16.5 4.61 16.5 5.79m-7.5 0h7.5"/></svg>';
 
   body.innerHTML = rows.map(function (l) {
     var waktu = new Date(l.created_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -547,14 +679,14 @@ function renderLogs() {
       : '<span class="inline-block text-[11px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Bot</span>';
     var foto = l.image_url
       ? '<a href="' + esc(l.image_url) + '" target="_blank"><img class="thumb" src="' + esc(l.image_url) + '" alt="foto" loading="lazy"></a>'
-      : '<span class="text-slate-300">—</span>';
+      : '<span class="text-slate-300">&mdash;</span>';
     return '<tr class="border-b border-slate-100 hover:bg-slate-50 align-top">' +
       '<td class="py-2.5 pr-3 text-xs text-slate-500 whitespace-nowrap">' + esc(waktu) + '</td>' +
       '<td class="py-2.5 pr-3 font-mono text-[11px] text-slate-400">' + esc(l.session_id) + '</td>' +
       '<td class="py-2.5 pr-3">' + dari + '</td>' +
       '<td class="py-2.5 pr-3 text-slate-700 max-w-[280px] break-words">' + esc(l.message || '') + '</td>' +
       '<td class="py-2.5 pr-3">' + foto + '</td>' +
-      '<td class="py-2.5"><button data-del="' + l.id + '" class="text-[11px] font-bold text-red-600 hover:bg-red-50 border border-red-200 rounded-lg px-2 py-1 transition">Hapus Pesan</button></td>' +
+      '<td class="py-2.5"><button data-del="' + l.id + '" class="flex items-center gap-1 text-[11px] font-bold text-red-600 hover:bg-red-50 border border-red-200 rounded-lg px-2 py-1 transition">' + trashIcon + '<span>Hapus</span></button></td>' +
       '</tr>';
   }).join('');
 }
@@ -565,11 +697,11 @@ $('logsBody').addEventListener('click', async function (e) {
   if (!confirm('Hapus pesan ini?')) return;
   var r = await sb.from('chat_logs').delete().eq('id', btn.dataset.del);
   if (r.error) toast('Gagal: ' + r.error.message);
-  else { toast('Pesan dihapus ✓'); loadLogs(); }
+  else { toast('Pesan dihapus'); loadLogs(); }
 });
 
 $('filterSesi').addEventListener('change', renderLogs);
-$('btnRefresh').addEventListener('click', function () { loadLogs(); toast('Log dimuat ulang ↻'); });
+$('btnRefresh').addEventListener('click', function () { loadLogs(); toast('Log dimuat ulang'); });
 
 $('btnHapusSesi').addEventListener('click', async function () {
   var sid = $('filterSesi').value;
@@ -577,20 +709,22 @@ $('btnHapusSesi').addEventListener('click', async function () {
   if (!confirm('Hapus SEMUA pesan dari sesi "' + sid + '"?')) return;
   var r = await sb.from('chat_logs').delete().eq('session_id', sid);
   if (r.error) toast('Gagal: ' + r.error.message);
-  else { toast('Sesi ' + sid + ' dihapus ✓'); loadLogs(); }
+  else { toast('Sesi ' + sid + ' dihapus'); loadLogs(); }
 });
 
 $('btnResetAll').addEventListener('click', async function () {
-  if (!confirm('⚠️ RESET TOTAL!\n\nSemua chat logs akan dihapus dan semua foto di storage "chat-media" akan dihapus permanen.\n\nLanjutkan?')) return;
+  if (!confirm('RESET TOTAL!\n\nSemua chat logs akan dihapus dan semua foto di storage "chat-media" akan dihapus permanen.\n\nLanjutkan?')) return;
   if (!confirm('Yakin 100%? Data yang dihapus TIDAK bisa dikembalikan.')) return;
 
   var btn = $('btnResetAll');
-  btn.disabled = true; btn.textContent = 'Membersihkan...';
+  btn.disabled = true;
+  var span = btn.querySelector('span');
+  var orig = span.textContent;
+  span.textContent = 'Membersihkan...';
   try {
     var r = await sb.from('chat_logs').delete().neq('id', 0);
     if (r.error) { toast('Gagal hapus tabel: ' + r.error.message); return; }
 
-    // Bersihkan semua file di bucket chat-media
     var bucket = sb.storage.from('chat-media');
     var top = await bucket.list('', { limit: 1000 });
     var paths = [];
@@ -598,7 +732,7 @@ $('btnResetAll').addEventListener('click', async function () {
     for (var i = 0; i < items.length; i++) {
       var it = items[i];
       if (it.id) {
-        paths.push(it.name); // file di root
+        paths.push(it.name);
       } else {
         var sub = await bucket.list(it.name, { limit: 1000 });
         ((sub && sub.data) || []).forEach(function (f) { paths.push(it.name + '/' + f.name); });
@@ -608,10 +742,11 @@ $('btnResetAll').addEventListener('click', async function () {
       var rm = await bucket.remove(paths);
       if (rm.error) toast('Log terhapus, tapi ada foto gagal dihapus: ' + rm.error.message);
     }
-    toast('Semua data & foto dibersihkan ✓');
+    toast('Semua data & foto dibersihkan');
     loadLogs();
   } finally {
-    btn.disabled = false; btn.textContent = '⚠️ Reset / Clear All Data';
+    btn.disabled = false;
+    span.textContent = orig;
   }
 });
 
@@ -619,15 +754,13 @@ $('btnResetAll').addEventListener('click', async function () {
 var allFaqs = [];
 var faqEditingId = null;
 
-$('btnCopyFaqSql').onclick = function () { copyText($('faqSqlCode').textContent, 'SQL FAQ tersalin ✓'); };
-
 async function loadFaq() {
   $('faqError').classList.add('hidden');
   var r = await sb.from('faq_data').select('*').order('id', { ascending: true });
   if (r.error) {
     allFaqs = [];
     var e = $('faqError');
-    e.textContent = 'Gagal memuat FAQ: ' + r.error.message + ' — pastikan tabel "faq_data" sudah dibuat (lihat SQL di atas).';
+    e.textContent = 'Gagal memuat FAQ: ' + r.error.message + ' — pastikan tabel "faq_data" sudah dibuat dan kolom "keywords" tersedia.';
     e.classList.remove('hidden');
   } else {
     allFaqs = r.data || [];
@@ -635,19 +768,23 @@ async function loadFaq() {
   renderFaq();
 }
 
+var editIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="icon-sm inline"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/></svg>';
+var delIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="icon-sm inline"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9M4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562L4.772 5.79m0 0c.34-.059.68-.114 1.022-.165m12.912 0a48.11 48.11 0 0 1 3.478.397M9 5.79c0-1.18.91-2.164 2.09-2.201a51.964 51.964 0 0 1 3.32 0C15.59 3.626 16.5 4.61 16.5 5.79m-7.5 0h7.5"/></svg>';
+
 function renderFaq() {
   var body = $('faqBody');
   if (!allFaqs.length) {
-    body.innerHTML = '<tr><td colspan="3" class="py-8 text-center text-slate-400 text-sm">Belum ada FAQ. Tambahkan lewat form di atas.</td></tr>';
+    body.innerHTML = '<tr><td colspan="4" class="py-8 text-center text-slate-400 text-sm">Belum ada FAQ. Tambahkan lewat form di atas.</td></tr>';
     return;
   }
   body.innerHTML = allFaqs.map(function (f) {
     return '<tr class="border-b border-slate-100 hover:bg-slate-50 align-top">' +
-      '<td class="py-2.5 pr-3 text-slate-700 max-w-[240px] break-words font-semibold">' + esc(f.question) + '</td>' +
-      '<td class="py-2.5 pr-3 text-slate-600 max-w-[360px] break-words whitespace-pre-wrap">' + esc(f.answer) + '</td>' +
+      '<td class="py-2.5 pr-3 text-slate-700 max-w-[220px] break-words font-semibold">' + esc(f.question) + '</td>' +
+      '<td class="py-2.5 pr-3 text-slate-500 max-w-[200px] break-words text-xs">' + esc(f.keywords || '&mdash;') + '</td>' +
+      '<td class="py-2.5 pr-3 text-slate-600 max-w-[320px] break-words whitespace-pre-wrap">' + esc(f.answer) + '</td>' +
       '<td class="py-2.5 whitespace-nowrap">' +
-        '<button data-faq-edit="' + f.id + '" class="text-[11px] font-bold text-emerald-700 hover:bg-emerald-50 border border-emerald-200 rounded-lg px-2 py-1 transition mr-1">Edit</button>' +
-        '<button data-faq-del="' + f.id + '" class="text-[11px] font-bold text-red-600 hover:bg-red-50 border border-red-200 rounded-lg px-2 py-1 transition">Hapus</button>' +
+        '<button data-faq-edit="' + f.id + '" class="flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:bg-emerald-50 border border-emerald-200 rounded-lg px-2 py-1 transition mb-1">' + editIcon + '<span>Edit</span></button>' +
+        '<button data-faq-del="' + f.id + '" class="flex items-center gap-1 text-[11px] font-bold text-red-600 hover:bg-red-50 border border-red-200 rounded-lg px-2 py-1 transition">' + delIcon + '<span>Hapus</span></button>' +
       '</td>' +
       '</tr>';
   }).join('');
@@ -665,9 +802,10 @@ function startFaqEdit(id) {
   if (!f) return;
   faqEditingId = f.id;
   $('faqQuestion').value = f.question || '';
+  $('faqKeywords').value = f.keywords || '';
   $('faqAnswer').value = f.answer || '';
   $('faqFormTitle').textContent = 'Edit FAQ';
-  $('btnFaqSubmit').textContent = '💾 Simpan Perubahan';
+  $('btnFaqSubmit').querySelector('span').textContent = 'Simpan Perubahan';
   $('btnFaqCancelEdit').classList.remove('hidden');
   faqClearError();
   $('faqQuestion').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -677,9 +815,10 @@ function startFaqEdit(id) {
 function cancelFaqEdit() {
   faqEditingId = null;
   $('faqQuestion').value = '';
+  $('faqKeywords').value = '';
   $('faqAnswer').value = '';
   $('faqFormTitle').textContent = 'Tambah FAQ Baru';
-  $('btnFaqSubmit').textContent = '➕ Tambah FAQ';
+  $('btnFaqSubmit').querySelector('span').textContent = 'Tambah FAQ';
   $('btnFaqCancelEdit').classList.add('hidden');
   faqClearError();
 }
@@ -687,34 +826,36 @@ function cancelFaqEdit() {
 async function submitFaq() {
   faqClearError();
   var question = $('faqQuestion').value.trim();
+  var keywords = $('faqKeywords').value.trim();
   var answer = $('faqAnswer').value.trim();
   if (!question || !answer) return faqError('Pertanyaan dan jawaban wajib diisi.');
 
   var btn = $('btnFaqSubmit');
+  var span = btn.querySelector('span');
   btn.disabled = true;
-  var originalText = btn.textContent;
-  btn.textContent = 'Menyimpan...';
+  var orig = span.textContent;
+  span.textContent = 'Menyimpan...';
   try {
     if (faqEditingId) {
-      var r = await sb.from('faq_data').update({ question: question, answer: answer }).eq('id', faqEditingId);
+      var r = await sb.from('faq_data').update({ question: question, keywords: keywords, answer: answer }).eq('id', faqEditingId);
       if (r.error) return faqError('Gagal menyimpan: ' + r.error.message);
-      toast('FAQ diperbarui ✓');
+      toast('FAQ diperbarui');
     } else {
-      var r2 = await sb.from('faq_data').insert({ question: question, answer: answer });
+      var r2 = await sb.from('faq_data').insert({ question: question, keywords: keywords, answer: answer });
       if (r2.error) return faqError('Gagal menambah: ' + r2.error.message);
-      toast('FAQ ditambahkan ✓');
+      toast('FAQ ditambahkan');
     }
     cancelFaqEdit();
     loadFaq();
   } finally {
     btn.disabled = false;
-    btn.textContent = originalText;
+    span.textContent = orig;
   }
 }
 
 $('btnFaqSubmit').addEventListener('click', submitFaq);
 $('btnFaqCancelEdit').addEventListener('click', cancelFaqEdit);
-$('btnFaqRefresh').addEventListener('click', function () { loadFaq(); toast('FAQ dimuat ulang ↻'); });
+$('btnFaqRefresh').addEventListener('click', function () { loadFaq(); toast('FAQ dimuat ulang'); });
 
 $('faqBody').addEventListener('click', async function (e) {
   var editBtn = e.target.closest('button[data-faq-edit]');
@@ -726,20 +867,12 @@ $('faqBody').addEventListener('click', async function (e) {
     var r = await sb.from('faq_data').delete().eq('id', delBtn.dataset.faqDel);
     if (r.error) toast('Gagal: ' + r.error.message);
     else {
-      toast('FAQ dihapus ✓');
+      toast('FAQ dihapus');
       if (String(faqEditingId) === String(delBtn.dataset.faqDel)) cancelFaqEdit();
       loadFaq();
     }
   }
 });
-
-/* ---------------- SQL TAB ---------------- */
-fetch('supabase-setup.sql')
-  .then(function (r) { return r.ok ? r.text() : Promise.reject(); })
-  .then(function (sql) { $('sqlCode').textContent = sql; })
-  .catch(function () { $('sqlCode').textContent = 'Gagal memuat supabase-setup.sql — buka file langsung dari server Anda.'; });
-
-$('btnCopySql').onclick = function () { copyText($('sqlCode').textContent, 'SQL tersalin ✓'); };
 </script>
 </body>
 </html>
