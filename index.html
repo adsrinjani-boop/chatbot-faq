@@ -311,9 +311,21 @@
     <!-- ========== TAB: EMBED ========== -->
     <section id="tab-embed" class="hidden space-y-4">
       <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+        <h2 class="font-bold text-lg">Bot ID Anda</h2>
+        <p class="text-sm text-slate-500 mt-1">ID unik akun Anda. Setiap widget yang dipasang dengan Bot ID ini akan menampilkan FAQ, pengaturan, dan mencatat chat log khusus milik akun Anda saja (isolasi data multi-tenant).</p>
+        <div class="mt-3 flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5">
+          <code id="botIdDisplay" class="text-sm font-mono text-slate-700 truncate flex-1"></code>
+          <button id="btnCopyBotId" class="flex items-center gap-1.5 text-xs font-bold bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg transition flex-shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="icon-sm"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/></svg>
+            Copy
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
         <h2 class="font-bold text-lg">Script Embed</h2>
-        <p class="text-sm text-slate-500 mt-1">Copy kode ini, lalu paste sebelum <code>&lt;/body&gt;</code> di website manapun. Nama bot, warna, dan pesan sudah otomatis mengikuti tab Pengaturan Widget.</p>
-        <textarea id="embedCode" readonly rows="5"
+        <p class="text-sm text-slate-500 mt-1">Copy kode ini, lalu paste sebelum <code>&lt;/body&gt;</code> di website manapun. Bot ID sudah otomatis tertaut ke akun Anda, jadi nama bot, warna, FAQ, dan pesan sudah sesuai Pengaturan Widget Anda.</p>
+        <textarea id="embedCode" readonly rows="8"
           class="mt-3 w-full font-mono text-xs bg-slate-900 text-emerald-300 rounded-xl p-4 focus:outline-none"></textarea>
         <button id="btnCopyEmbed" class="mt-3 flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="icon-sm"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/></svg>
@@ -372,6 +384,7 @@ var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 var $ = function (id) { return document.getElementById(id); };
 var allLogs = [];
 var TABS = ['settings', 'faq', 'logs', 'embed'];
+var currentUser = null;
 
 /* ---------------- TOAST ---------------- */
 var toastTimer = null;
@@ -452,12 +465,14 @@ async function submitAuth() {
 
 function toggleViews(session) {
   if (session) {
+    currentUser = session.user;
     $('viewAuth').classList.add('hidden');
     $('viewApp').classList.remove('hidden');
     $('userEmail').textContent = session.user.email || '';
     loadSettings();
     loadLogs();
   } else {
+    currentUser = null;
     $('viewApp').classList.add('hidden');
     $('viewAuth').classList.remove('hidden');
   }
@@ -543,11 +558,12 @@ syncColorPair('stButtonColor', 'stButtonColorHex');
 syncColorPair('stAccentColor', 'stAccentColorHex');
 
 async function loadSettings() {
+  if (!currentUser) return;
   $('settingsError').classList.add('hidden');
-  var r = await sb.from('widget_settings').select('*').eq('id', 1).maybeSingle();
+  var r = await sb.from('widget_settings').select('*').eq('user_id', currentUser.id).maybeSingle();
   if (r.error) {
     var e = $('settingsError');
-    e.textContent = 'Gagal memuat pengaturan: ' + r.error.message + ' — pastikan tabel "widget_settings" sudah dibuat.';
+    e.textContent = 'Gagal memuat pengaturan: ' + r.error.message + ' — pastikan tabel "widget_settings" sudah dimigrasi ke multi-tenant (lihat SQL).';
     e.classList.remove('hidden');
     currentSettings = DEFAULT_SETTINGS;
   } else {
@@ -558,9 +574,10 @@ async function loadSettings() {
 }
 
 async function saveSettings() {
+  if (!currentUser) return;
   $('settingsError').classList.add('hidden');
   var payload = {
-    id: 1,
+    user_id: currentUser.id,
     bot_name: $('stBotName').value.trim() || DEFAULT_SETTINGS.bot_name,
     header_color: $('stHeaderColorHex').value.trim() || DEFAULT_SETTINGS.header_color,
     button_color: $('stButtonColorHex').value.trim() || DEFAULT_SETTINGS.button_color,
@@ -573,7 +590,7 @@ async function saveSettings() {
   var btn = $('btnSaveSettings');
   btn.disabled = true;
   try {
-    var r = await sb.from('widget_settings').upsert(payload, { onConflict: 'id' });
+    var r = await sb.from('widget_settings').upsert(payload, { onConflict: 'user_id' });
     if (r.error) {
       var e = $('settingsError');
       e.textContent = 'Gagal menyimpan: ' + r.error.message;
@@ -591,16 +608,25 @@ $('btnSaveSettings').addEventListener('click', saveSettings);
 
 /* ---------------- EMBED CODE ---------------- */
 function buildEmbedCode() {
+  if (!currentUser) return;
   var origin = location.origin;
   $('embedCode').value =
     '<!-- ===== Chat Widget CS ===== -->\n' +
+    '<script>\n' +
+    '  window.CHAT_WIDGET_CONFIG = {\n' +
+    '    botId: \'' + currentUser.id + '\'\n' +
+    '  };\n' +
+    '<\/script>\n' +
     '<script src="' + origin + '/widget.js" async><\/script>\n' +
     '<!-- ===== /Chat Widget CS ===== -->';
+  $('botIdDisplay').textContent = currentUser.id;
 }
 
 $('btnCopyEmbed').onclick = function () { copyText($('embedCode').value, 'Kode embed tersalin'); };
+$('btnCopyBotId').onclick = function () { if (currentUser) copyText(currentUser.id, 'Bot ID tersalin'); };
 
 $('btnDlExample').onclick = function () {
+  if (!currentUser) return;
   var origin = location.origin;
   var html =
     '<!DOCTYPE html>\n<html lang="id">\n<head>\n' +
@@ -611,6 +637,11 @@ $('btnDlExample').onclick = function () {
     '  <h1>Website Saya</h1>\n' +
     '  <p>Chat widget muncul di pojok kanan bawah.</p>\n\n' +
     '  <!-- ===== Chat Widget CS ===== -->\n' +
+    '  <script>\n' +
+    '    window.CHAT_WIDGET_CONFIG = {\n' +
+    '      botId: \'' + currentUser.id + '\'\n' +
+    '    };\n' +
+    '  <\/script>\n' +
     '  <script src="' + origin + '/widget.js" async><\/script>\n' +
     '  <!-- ===== /Chat Widget CS ===== -->\n' +
     '<\/body>\n<\/html>\n';
@@ -627,12 +658,13 @@ $('btnDlExample').onclick = function () {
 
 /* ---------------- LOGS ---------------- */
 async function loadLogs() {
+  if (!currentUser) return;
   $('logsError').classList.add('hidden');
-  var r = await sb.from('chat_logs').select('*').order('created_at', { ascending: false }).limit(500);
+  var r = await sb.from('chat_logs').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }).limit(500);
   if (r.error) {
     allLogs = [];
     var e = $('logsError');
-    e.textContent = 'Gagal memuat log: ' + r.error.message + ' — pastikan Anda sudah login dan tabel "chat_logs" sudah dibuat.';
+    e.textContent = 'Gagal memuat log: ' + r.error.message + ' — pastikan tabel "chat_logs" sudah dimigrasi ke multi-tenant (lihat SQL).';
     e.classList.remove('hidden');
   } else {
     allLogs = r.data || [];
@@ -755,12 +787,13 @@ var allFaqs = [];
 var faqEditingId = null;
 
 async function loadFaq() {
+  if (!currentUser) return;
   $('faqError').classList.add('hidden');
-  var r = await sb.from('faq_data').select('*').order('id', { ascending: true });
+  var r = await sb.from('faq_data').select('*').eq('user_id', currentUser.id).order('id', { ascending: true });
   if (r.error) {
     allFaqs = [];
     var e = $('faqError');
-    e.textContent = 'Gagal memuat FAQ: ' + r.error.message + ' — pastikan tabel "faq_data" sudah dibuat dan kolom "keywords" tersedia.';
+    e.textContent = 'Gagal memuat FAQ: ' + r.error.message + ' — pastikan tabel "faq_data" sudah dimigrasi ke multi-tenant (lihat SQL).';
     e.classList.remove('hidden');
   } else {
     allFaqs = r.data || [];
@@ -824,6 +857,7 @@ function cancelFaqEdit() {
 }
 
 async function submitFaq() {
+  if (!currentUser) return;
   faqClearError();
   var question = $('faqQuestion').value.trim();
   var keywords = $('faqKeywords').value.trim();
@@ -837,11 +871,12 @@ async function submitFaq() {
   span.textContent = 'Menyimpan...';
   try {
     if (faqEditingId) {
-      var r = await sb.from('faq_data').update({ question: question, keywords: keywords, answer: answer }).eq('id', faqEditingId);
+      var r = await sb.from('faq_data').update({ question: question, keywords: keywords, answer: answer })
+        .eq('id', faqEditingId).eq('user_id', currentUser.id);
       if (r.error) return faqError('Gagal menyimpan: ' + r.error.message);
       toast('FAQ diperbarui');
     } else {
-      var r2 = await sb.from('faq_data').insert({ question: question, keywords: keywords, answer: answer });
+      var r2 = await sb.from('faq_data').insert({ question: question, keywords: keywords, answer: answer, user_id: currentUser.id });
       if (r2.error) return faqError('Gagal menambah: ' + r2.error.message);
       toast('FAQ ditambahkan');
     }
@@ -864,7 +899,7 @@ $('faqBody').addEventListener('click', async function (e) {
   var delBtn = e.target.closest('button[data-faq-del]');
   if (delBtn) {
     if (!confirm('Hapus FAQ ini?')) return;
-    var r = await sb.from('faq_data').delete().eq('id', delBtn.dataset.faqDel);
+    var r = await sb.from('faq_data').delete().eq('id', delBtn.dataset.faqDel).eq('user_id', currentUser.id);
     if (r.error) toast('Gagal: ' + r.error.message);
     else {
       toast('FAQ dihapus');
