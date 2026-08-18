@@ -161,6 +161,10 @@
     '#cw-wa a{display:flex;align-items:center;justify-content:center;gap:8px;background:#22c55e;color:#fff;text-decoration:none;padding:10px;border-radius:10px;font-size:13.5px;font-weight:700}' +
     '#cw-wa a:hover{background:#16a34a}' +
     '#cw-wa svg{width:18px;height:18px;fill:#fff}' +
+    '.cw-faqwrap{display:flex;flex-direction:column;gap:6px;width:100%;margin-top:2px}' +
+    '.cw-faqlabel{font-size:11.5px;font-weight:700;color:#64748b;margin:2px 0 2px 2px;text-transform:uppercase;letter-spacing:.03em}' +
+    '.cw-faqbtn{background:#fff;border:1.5px solid ' + CFG.primary + ';color:' + CFG.primary + ';font-size:13px;font-weight:600;text-align:left;padding:8px 12px;border-radius:12px;cursor:pointer;transition:background .15s,color .15s;line-height:1.4}' +
+    '.cw-faqbtn:hover{background:' + CFG.primary + ';color:#fff}' +
     '.cw-inputbar{display:flex;align-items:center;gap:6px;padding:10px;background:#fff;border-top:1px solid #e2e8f0;flex-shrink:0}' +
     '.cw-iconbtn{background:none;border:none;cursor:pointer;color:#64748b;padding:7px;border-radius:8px;display:flex;align-items:center;justify-content:center}' +
     '.cw-iconbtn:hover{background:#f1f5f9;color:' + CFG.primary + '}' +
@@ -279,6 +283,65 @@
     badge.style.display = 'flex';
   }
 
+  /* ================= FAQ QUICK REPLY ================= */
+  var faqLoaded = false;
+  var faqRetries = 0;
+
+  function loadFaqButtons() {
+    if (faqLoaded) return;
+    var c = client();
+    if (!c) {
+      // Supabase SDK belum siap dimuat — coba lagi sebentar (maks ~5 detik)
+      if (faqRetries++ < 12) setTimeout(loadFaqButtons, 400);
+      return;
+    }
+    faqLoaded = true;
+    c.from('faq_data').select('id,question,answer').order('id', { ascending: true }).limit(20)
+      .then(function (r) {
+        if (r.error) { console.warn('[ChatWidget] gagal memuat FAQ:', r.error.message); return; }
+        var rows = r.data || [];
+        if (!rows.length) return;
+        renderFaqButtons(rows);
+      })
+      .catch(function () {});
+  }
+
+  function renderFaqButtons(rows) {
+    var wrap = document.createElement('div');
+    wrap.className = 'cw-msg cw-bot';
+    var inner = document.createElement('div');
+    inner.className = 'cw-faqwrap';
+    var label = document.createElement('div');
+    label.className = 'cw-faqlabel';
+    label.textContent = 'Pertanyaan yang sering ditanyakan';
+    inner.appendChild(label);
+    rows.forEach(function (faq) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'cw-faqbtn';
+      btn.textContent = faq.question;
+      btn.addEventListener('click', function () { handleFaqClick(faq, wrap); });
+      inner.appendChild(btn);
+    });
+    wrap.appendChild(inner);
+    msgs.appendChild(wrap);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function handleFaqClick(faq, wrapEl) {
+    if (wrapEl && wrapEl.parentNode) wrapEl.parentNode.removeChild(wrapEl);
+    addMsg('user', faq.question);
+    logChat('user', faq.question);
+    showTyping();
+    setTimeout(function () {
+      hideTyping();
+      var answer = faq.answer || 'Maaf, jawaban untuk pertanyaan ini belum tersedia.';
+      addMsg('bot', answer);
+      logChat('bot', answer);
+      if (!isOpen) { bumpUnread(); playDing(); }
+    }, 500 + Math.random() * 500);
+  }
+
   /* ================= AKSI ================= */
   function openPanel() {
     isOpen = true;
@@ -290,6 +353,7 @@
       greeted = true;
       addMsg('bot', CFG.greeting);
       logChat('bot', CFG.greeting);
+      loadFaqButtons();
     }
     msgs.scrollTop = msgs.scrollHeight;
   }
