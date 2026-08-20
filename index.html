@@ -604,12 +604,27 @@ async function saveSettings() {
   btn.textContent = 'Menyimpan...';
 
   try {
-    var r = await sb
+        // Coba UPDATE dulu jika baris sudah ada, INSERT jika belum
+    var existing = await sb
       .from('widget_settings')
-      .upsert(payload, {
-        onConflict:       'user_id',  // harus cocok dengan nama CONSTRAINT di SQL
-        ignoreDuplicates: false       // false = UPDATE jika sudah ada, bukan dilewati
-      });
+      .select('id')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+
+    var r;
+    if (existing.data) {
+      // Baris sudah ada — UPDATE berdasarkan id (hindari conflict sama sekali)
+      r = await sb
+        .from('widget_settings')
+        .update(payload)
+        .eq('id', existing.data.id)
+        .eq('user_id', currentUser.id);
+    } else {
+      // Baris belum ada — INSERT baru
+      r = await sb
+        .from('widget_settings')
+        .insert(payload);
+    }
 
     if (r.error) {
       var e = $('settingsError');
