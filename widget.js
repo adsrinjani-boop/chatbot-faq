@@ -21,12 +21,22 @@
   if (window.__cwLoaded) return;
   window.__cwLoaded = true;
 
-  /* ================= KONFIGURASI DASAR (FALLBACK) ================= */
+   /* ================= KONFIGURASI DASAR (FALLBACK) ================= */
   var USER_CFG = window.CHAT_WIDGET_CONFIG || {};
+
+  // Baca botId dari atribut data-bot-id di tag <script> jika tidak diset via window config
+  // Contoh embed: <script src="widget.js" data-bot-id="UUID-ADMIN" async></script>
+  if (!USER_CFG.botId) {
+    var _scripts = document.querySelectorAll('script[data-bot-id]');
+    if (_scripts.length) {
+      USER_CFG.botId = _scripts[_scripts.length - 1].getAttribute('data-bot-id');
+    }
+  }
+
   var CFG = Object.assign({
     supabaseUrl: 'https://lmsgunuqsigdpnagkmjq.supabase.co',
     supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxtc2d1bnVxc2lnZHBuYWdrbWpxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY3NjE5NzMsImV4cCI6MjEwMjMzNzk3M30.-sl-P0_Mr7hakna5XYq0hj_Q0g-EgM0ef5nAeX6iqKA',
-    botId: null,                 // WAJIB: UUID user (lihat tab "Kode Embed" di Admin Panel)
+    botId: null,
     whatsapp: '6281234567890',
     botName: 'CS Assistant',
     primary: '#16a34a',
@@ -39,10 +49,11 @@
   }, USER_CFG);
 
   if (!CFG.botId) {
-    console.error('[ChatWidget] window.CHAT_WIDGET_CONFIG.botId belum diisi. Salin kode embed dari Admin Panel.');
+    console.error('[ChatWidget] botId belum diisi. Gunakan salah satu cara:\n' +
+      '  Cara 1: <script src="widget.js" data-bot-id="UUID-ADMIN" async></script>\n' +
+      '  Cara 2: window.CHAT_WIDGET_CONFIG = { botId: "UUID-ADMIN" }; (sebelum tag script)');
     return;
   }
-
   /* ================= STATE ================= */
   var NS = '_' + String(CFG.botId).slice(0, 8);
   var LS_SESSION = 'cw_session' + NS;
@@ -88,12 +99,20 @@
     return sb;
   }
 
-  function logChat(sender, message, imageUrl) {
+   function logChat(sender, message, imageUrl) {
     var c = client();
-    if (!c) return;
+    if (!c || !CFG.botId) return;
     c.from('chat_logs')
-      .insert({ user_id: CFG.botId, session_id: sessionId, sender: sender, message: message || null, image_url: imageUrl || null })
-      .then(function (r) { if (r.error) console.warn('[ChatWidget] gagal menyimpan log:', r.error.message); });
+      .insert({
+        user_id:   CFG.botId,        // UUID admin pemilik widget
+        session_id: sessionId,
+        sender:    sender,
+        message:   message   || null,
+        image_url: imageUrl  || null
+      })
+      .then(function (r) {
+        if (r.error) console.warn('[ChatWidget] gagal menyimpan log:', r.error.message);
+      });
   }
 
   // Bunyi "ding" lembut via Web Audio API (tanpa file eksternal)
