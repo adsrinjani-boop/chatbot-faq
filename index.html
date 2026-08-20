@@ -576,33 +576,32 @@ async function loadSettings() {
 
 async function saveSettings() {
   if (!currentUser) return;
-  $('settingsError').classList.add('hidden');
+  var errEl = $('settingsError');
+  errEl.classList.add('hidden');
+  
   var payload = {
     user_id: currentUser.id,
-    bot_name: $('stBotName').value.trim() || DEFAULT_SETTINGS.bot_name,
-    header_color: $('stHeaderColorHex').value.trim() || DEFAULT_SETTINGS.header_color,
-    button_color: $('stButtonColorHex').value.trim() || DEFAULT_SETTINGS.button_color,
-    accent_color: $('stAccentColorHex').value.trim() || DEFAULT_SETTINGS.accent_color,
-    whatsapp: $('stWhatsapp').value.trim() || DEFAULT_SETTINGS.whatsapp,
-    greeting: $('stGreeting').value.trim() || DEFAULT_SETTINGS.greeting,
-    fallback_message: $('stFallback').value.trim() || DEFAULT_SETTINGS.fallback_message,
+    bot_name: $('stBotName').value.trim(),
+    whatsapp: $('stWhatsapp').value.trim(),
+    header_color: $('stHeaderColorHex').value.trim() || '#16a34a',
+    button_color: $('stButtonColorHex').value.trim() || '#16a34a',
+    accent_color: $('stAccentColorHex').value.trim() || '#16a34a',
+    greeting: $('stGreeting').value.trim(),
+    fallback: $('stFallback').value.trim(),
     updated_at: new Date().toISOString()
   };
-  var btn = $('btnSaveSettings');
-  btn.disabled = true;
+
+  $('btnSaveSettings').disabled = true;
   try {
-    var r = await sb.from('widget_settings').upsert(payload, { onConflict: 'user_id' });
-    if (r.error) {
-      var e = $('settingsError');
-      e.textContent = 'Gagal menyimpan: ' + r.error.message;
-      e.classList.remove('hidden');
-      return;
-    }
-    currentSettings = payload;
-    toast('Pengaturan widget tersimpan');
-    buildEmbedCode();
+    // Menggunakan upsert agar tidak bentrok jika data user_id sudah ada
+    var res = await sb.from('widget_settings').upsert(payload, { onConflict: 'user_id' });
+    if (res.error) throw res.error;
+    toast('Pengaturan berhasil disimpan!');
+  } catch (e) {
+    errEl.textContent = 'Gagal menyimpan pengaturan: ' + (e.message || e);
+    errEl.classList.remove('hidden');
   } finally {
-    btn.disabled = false;
+    $('btnSaveSettings').disabled = false;
   }
 }
 $('btnSaveSettings').addEventListener('click', saveSettings);
