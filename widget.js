@@ -4,8 +4,11 @@
  * ============================================================
  *  CARA PASANG di website manapun (HTML biasa, WordPress, dll):
  *
- *  <script src="https://domain-anda.com/widget.js" async></script>
+ *  <script src="https://domain-anda.com/widget.js"
+ *          data-bot-id="UUID-ADMIN-KAMU"
+ *          async></script>
  *
+ *  UUID-ADMIN-KAMU bisa disalin dari tab "Kode Embed" di Admin Panel.
  *  Nama bot, warna, nomor WhatsApp, pesan sambutan, dan pesan
  *  fallback diambil otomatis dari tabel Supabase "widget_settings"
  *  (dikelola lewat tab "Pengaturan Widget" di Admin Panel).
@@ -138,35 +141,59 @@
   }
 
   /* ================= LOAD PENGATURAN DARI SUPABASE ================= */
-  function fetchSettings(done) {
+    function fetchSettings(done) {
     var c = client();
     if (!c) return done();
     var finished = false;
-    var timer = setTimeout(function () { if (!finished) { finished = true; done(); } }, 3000);
 
-    c.from('widget_settings').select('*').eq('user_id', CFG.botId).maybeSingle().then(function (r) {
-      if (finished) return;
-      finished = true;
-      clearTimeout(timer);
-      if (!r.error && r.data) {
-        var d = r.data;
-        if (!USER_CFG.botName && d.bot_name) CFG.botName = d.bot_name;
-        if (!USER_CFG.whatsapp && d.whatsapp) CFG.whatsapp = d.whatsapp;
-        if (!USER_CFG.greeting && d.greeting) CFG.greeting = d.greeting;
-        if (d.fallback_message) CFG.fallback = d.fallback_message;
-
-        // Warna: window.CHAT_WIDGET_CONFIG.primary (jika diisi manual) selalu menang.
-        // Kalau tidak diisi, pakai warna dari database; kalau database juga kosong, pakai CFG.primary default.
-        if (!USER_CFG.primary) {
-          CFG.headerColor = d.header_color || CFG.primary;
-          CFG.buttonColor = d.button_color || CFG.primary;
-          CFG.accentColor = d.accent_color || CFG.primary;
-        }
+    // Timeout 4 detik — jika Supabase lambat, widget tetap muncul pakai nilai default
+    var timer = setTimeout(function () {
+      if (!finished) {
+        finished = true;
+        console.warn('[ChatWidget] fetchSettings timeout — pakai nilai default.');
+        done();
       }
-      done();
-    }).catch(function () {
-      if (!finished) { finished = true; clearTimeout(timer); done(); }
-    });
+    }, 4000);
+
+    c.from('widget_settings')
+      .select('bot_name,whatsapp,greeting,fallback_message,header_color,button_color,accent_color')
+      .eq('user_id', CFG.botId)
+      .maybeSingle()
+      .then(function (r) {
+        if (finished) return;  // timeout sudah duluan, abaikan
+        finished = true;
+        clearTimeout(timer);
+
+        if (r.error) {
+          console.warn('[ChatWidget] gagal fetch settings:', r.error.message);
+          return done(); // pakai CFG default, widget tetap jalan
+        }
+
+        if (r.data) {
+          var d = r.data;
+          // Teks — hanya override jika tidak di-hardcode via window.CHAT_WIDGET_CONFIG
+          if (!USER_CFG.botName  && d.bot_name)        CFG.botName  = d.bot_name;
+          if (!USER_CFG.whatsapp && d.whatsapp)         CFG.whatsapp = d.whatsapp;
+          if (!USER_CFG.greeting && d.greeting)         CFG.greeting = d.greeting;
+          if (d.fallback_message)                       CFG.fallback = d.fallback_message;
+
+          // Warna — window.CHAT_WIDGET_CONFIG.primary selalu menang jika diisi manual
+          if (!USER_CFG.primary) {
+            CFG.headerColor = d.header_color || CFG.primary;
+            CFG.buttonColor = d.button_color || CFG.primary;
+            CFG.accentColor = d.accent_color || CFG.primary;
+          }
+        }
+        done();
+      })
+      .catch(function (err) {
+        if (!finished) {
+          finished = true;
+          clearTimeout(timer);
+          console.warn('[ChatWidget] fetchSettings error:', err);
+          done(); // widget tetap muncul walau Supabase error
+        }
+      });
   }
 
   function fetchFaqCache(done) {
