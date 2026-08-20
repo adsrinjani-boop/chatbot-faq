@@ -26,6 +26,7 @@
   var CFG = Object.assign({
     supabaseUrl: 'https://lmsgunuqsigdpnagkmjq.supabase.co',
     supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxtc2d1bnVxc2lnZHBuYWdrbWpxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY3NjE5NzMsImV4cCI6MjEwMjMzNzk3M30.-sl-P0_Mr7hakna5XYq0hj_Q0g-EgM0ef5nAeX6iqKA',
+    botId: null,                 // WAJIB: UUID user (lihat tab "Kode Embed" di Admin Panel)
     whatsapp: '6281234567890',
     botName: 'CS Assistant',
     primary: '#16a34a',
@@ -37,10 +38,16 @@
     fallback: 'Maaf, kami belum menemukan jawaban untuk pertanyaan Anda. Silakan hubungi CS kami melalui WhatsApp di bawah ini.'
   }, USER_CFG);
 
+  if (!CFG.botId) {
+    console.error('[ChatWidget] window.CHAT_WIDGET_CONFIG.botId belum diisi. Salin kode embed dari Admin Panel.');
+    return;
+  }
+
   /* ================= STATE ================= */
-  var LS_SESSION = 'cw_session';
-  var LS_HISTORY = 'cw_history';
-  var SS_CLOSED = 'cw_closed';
+  var NS = '_' + String(CFG.botId).slice(0, 8);
+  var LS_SESSION = 'cw_session' + NS;
+  var LS_HISTORY = 'cw_history' + NS;
+  var SS_CLOSED = 'cw_closed' + NS;
 
   var sessionId = null;
   try {
@@ -51,18 +58,18 @@
     }
   } catch (e) { sessionId = 's_anon'; }
 
-  var history = [];
-  try { history = JSON.parse(localStorage.getItem(LS_HISTORY) || '[]'); } catch (e) {}
+  var chatHistory = [];
+  try { chatHistory = JSON.parse(localStorage.getItem(LS_HISTORY) || '[]'); } catch (e) {}
 
   var sb = null;
   var isOpen = false;
   var unread = 0;
-  var greeted = history.length > 0;
+  var greeted = chatHistory.length > 0;
   var faqCache = [];
 
   /* ================= UTIL ================= */
   function saveHistory() {
-    try { localStorage.setItem(LS_HISTORY, JSON.stringify(history.slice(-100))); } catch (e) {}
+    try { localStorage.setItem(LS_HISTORY, JSON.stringify(chatHistory.slice(-100))); } catch (e) {}
   }
 
   function loadSupabase(cb) {
@@ -85,7 +92,7 @@
     var c = client();
     if (!c) return;
     c.from('chat_logs')
-      .insert({ session_id: sessionId, sender: sender, message: message || null, image_url: imageUrl || null })
+      .insert({ user_id: CFG.botId, session_id: sessionId, sender: sender, message: message || null, image_url: imageUrl || null })
       .then(function (r) { if (r.error) console.warn('[ChatWidget] gagal menyimpan log:', r.error.message); });
   }
 
@@ -118,7 +125,7 @@
     var finished = false;
     var timer = setTimeout(function () { if (!finished) { finished = true; done(); } }, 3000);
 
-    c.from('widget_settings').select('*').eq('id', 1).maybeSingle().then(function (r) {
+    c.from('widget_settings').select('*').eq('user_id', CFG.botId).maybeSingle().then(function (r) {
       if (finished) return;
       finished = true;
       clearTimeout(timer);
@@ -146,7 +153,7 @@
   function fetchFaqCache(done) {
     var c = client();
     if (!c) return done();
-    c.from('faq_data').select('id,question,answer,keywords').order('id', { ascending: true }).limit(100)
+    c.from('faq_data').select('id,question,answer,keywords').eq('user_id', CFG.botId).order('id', { ascending: true }).limit(100)
       .then(function (r) {
         if (!r.error) faqCache = r.data || [];
         done();
@@ -200,9 +207,9 @@
   var ICON_WA = '<svg viewBox="0 0 24 24"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.64.07-.3-.15-1.26-.46-2.4-1.47-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.6.13-.14.3-.35.44-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.5 0 1.47 1.07 2.9 1.22 3.1.15.2 2.11 3.22 5.1 4.51.71.31 1.27.49 1.7.63.72.23 1.37.2 1.88.12.58-.09 1.76-.72 2.01-1.41.25-.7.25-1.29.17-1.41-.07-.13-.27-.2-.57-.35M12.05 21.79h-.01a9.87 9.87 0 0 1-5.03-1.38l-.36-.21-3.74.98 1-3.65-.24-.37a9.85 9.85 0 0 1-1.51-5.26c0-5.45 4.44-9.88 9.9-9.88a9.82 9.82 0 0 1 9.88 9.9c0 5.44-4.44 9.87-9.89 9.87m8.42-18.29A11.8 11.8 0 0 0 12.05 0C5.5 0 .16 5.34.16 11.9c0 2.1.55 4.14 1.59 5.95L.06 24l6.3-1.65a11.9 11.9 0 0 0 5.68 1.45h.01c6.55 0 11.89-5.34 11.89-11.9 0-3.18-1.24-6.16-3.47-8.4"/></svg>';
 
   /* ================= CSS ================= */
-  var css = '' +
+  function buildCss() { return '' +
     '#cw-root *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}' +
-    '#cw-root{--cw-header:' + CFG.primary + ';--cw-button:' + CFG.primary + ';--cw-accent:' + CFG.primary + '}' +
+    '#cw-root{--cw-header:' + (CFG.headerColor || CFG.primary) + ';--cw-button:' + (CFG.buttonColor || CFG.primary) + ';--cw-accent:' + (CFG.accentColor || CFG.primary) + '}' +
     '#cw-bubble{position:fixed;right:20px;bottom:20px;width:58px;height:58px;border-radius:50%;background:var(--cw-button);border:none;cursor:pointer;z-index:999998;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(0,0,0,.28);transition:transform .2s}' +
     '#cw-bubble:hover{transform:scale(1.08)}' +
     '#cw-bubble svg{width:27px;height:27px;color:#fff}' +
@@ -244,7 +251,7 @@
     '#cw-input:focus{border-color:var(--cw-accent);background:#fff}' +
     '#cw-send{background:var(--cw-accent);border:none;color:#fff;width:38px;height:38px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}' +
     '#cw-send:hover{opacity:.9}' +
-    '#cw-send svg{width:17px;height:17px}';
+    '#cw-send svg{width:17px;height:17px}'; }
 
   /* ================= BANGUN DOM ================= */
   var root, bubble, badge, panel, header, msgs, waBar, inputBar, input, fileInput;
@@ -254,7 +261,7 @@
     root.id = 'cw-root';
 
     var style = document.createElement('style');
-    style.textContent = css;
+    style.textContent = buildCss();
     root.appendChild(style);
 
     // Bubble
@@ -306,7 +313,7 @@
     fileInput = inputBar.querySelector('#cw-file');
 
     // Pulihkan riwayat chat dari localStorage
-    history.forEach(function (m) { addMsg(m.sender, m.message, m.image_url, true); });
+    chatHistory.forEach(function (m) { addMsg(m.sender, m.message, m.image_url, true); });
 
     /* ================= EVENT ================= */
     bubble.addEventListener('click', function () { isOpen ? closePanel() : openPanel(); });
@@ -353,7 +360,7 @@
     msgs.appendChild(row);
     msgs.scrollTop = msgs.scrollHeight;
     if (!skipSave) {
-      history.push({ sender: sender, message: text || null, image_url: imageUrl || null });
+      chatHistory.push({ sender: sender, message: text || null, image_url: imageUrl || null });
       saveHistory();
     }
     return row;
@@ -465,10 +472,10 @@
     var localUrl = URL.createObjectURL(file);
     var rowEl = addMsg('user', null, localUrl, true);
     var c = client();
-    if (!c) { addMsg('bot', 'Koneksi bermasalah, foto gagal terkirim. Coba lagi ya.'); return; }
+    if (!c) { if (rowEl && rowEl.parentNode) rowEl.parentNode.removeChild(rowEl); addMsg('bot', 'Koneksi bermasalah, foto gagal terkirim. Coba lagi ya.'); return; }
 
     var fname = Date.now() + '_' + file.name.replace(/[^\w.\-]/g, '_');
-    var path = sessionId + '/' + fname;
+    var path = CFG.botId + '/' + sessionId + '/' + fname;
 
     c.storage.from('chat-media').upload(path, file, { cacheControl: '3600', upsert: false })
       .then(function (res) {
@@ -481,7 +488,7 @@
         var pub = c.storage.from('chat-media').getPublicUrl(path).data.publicUrl;
         var img = rowEl.querySelector('img');
         if (img) { img.src = pub; img.onclick = function () { window.open(pub, '_blank'); }; }
-        history.push({ sender: 'user', message: null, image_url: pub });
+        chatHistory.push({ sender: 'user', message: null, image_url: pub });
         saveHistory();
         logChat('user', '[foto]', pub);
         setTimeout(function () {
@@ -491,6 +498,11 @@
           showWaBar();
           if (!isOpen) { bumpUnread(); playDing(); }
         }, 600);
+      })
+      .catch(function (err) {
+        console.warn('[ChatWidget] upload error:', err);
+        addMsg('bot', 'Foto gagal terkirim. Silakan coba lagi atau kirim via WhatsApp.');
+        showWaBar();
       });
   }
 
