@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -727,7 +728,7 @@ $('logsBody').addEventListener('click', async function (e) {
   var btn = e.target.closest('button[data-del]');
   if (!btn) return;
   if (!confirm('Hapus pesan ini?')) return;
-  var r = await sb.from('chat_logs').delete().eq('id', btn.dataset.del);
+  var r = await sb.from('chat_logs').delete().eq('id', btn.dataset.del).eq('user_id', currentUser.id);
   if (r.error) toast('Gagal: ' + r.error.message);
   else { toast('Pesan dihapus'); loadLogs(); }
 });
@@ -739,7 +740,7 @@ $('btnHapusSesi').addEventListener('click', async function () {
   var sid = $('filterSesi').value;
   if (!sid) return toast('Pilih dulu sesi di dropdown filter');
   if (!confirm('Hapus SEMUA pesan dari sesi "' + sid + '"?')) return;
-  var r = await sb.from('chat_logs').delete().eq('session_id', sid);
+  var r = await sb.from('chat_logs').delete().eq('session_id', sid).eq('user_id', currentUser.id);
   if (r.error) toast('Gagal: ' + r.error.message);
   else { toast('Sesi ' + sid + ' dihapus'); loadLogs(); }
 });
@@ -754,20 +755,20 @@ $('btnResetAll').addEventListener('click', async function () {
   var orig = span.textContent;
   span.textContent = 'Membersihkan...';
   try {
-    var r = await sb.from('chat_logs').delete().neq('id', 0);
+    var r = await sb.from('chat_logs').delete().eq('user_id', currentUser.id);
     if (r.error) { toast('Gagal hapus tabel: ' + r.error.message); return; }
 
     var bucket = sb.storage.from('chat-media');
-    var top = await bucket.list('', { limit: 1000 });
+    var top = await bucket.list(currentUser.id, { limit: 1000 });
     var paths = [];
     var items = (top && top.data) || [];
     for (var i = 0; i < items.length; i++) {
       var it = items[i];
       if (it.id) {
-        paths.push(it.name);
+        paths.push(currentUser.id + '/' + it.name);
       } else {
-        var sub = await bucket.list(it.name, { limit: 1000 });
-        ((sub && sub.data) || []).forEach(function (f) { paths.push(it.name + '/' + f.name); });
+        var sub = await bucket.list(currentUser.id + '/' + it.name, { limit: 1000 });
+        ((sub && sub.data) || []).forEach(function (f) { paths.push(currentUser.id + '/' + it.name + '/' + f.name); });
       }
     }
     if (paths.length) {
