@@ -576,32 +576,56 @@ async function loadSettings() {
 
 async function saveSettings() {
   if (!currentUser) return;
-  var errEl = $('settingsError');
-  errEl.classList.add('hidden');
-  
+  $('settingsError').classList.add('hidden');
+
+  // Refresh session dulu — cegah token expired menyebabkan 401 / 409
+  var sessionCheck = await sb.auth.getSession();
+  if (!sessionCheck.data.session) {
+    var e = $('settingsError');
+    e.textContent = 'Sesi login habis. Silakan keluar lalu masuk kembali.';
+    e.classList.remove('hidden');
+    return;
+  }
+
   var payload = {
-    user_id: currentUser.id,
-    bot_name: $('stBotName').value.trim(),
-    whatsapp: $('stWhatsapp').value.trim(),
-    header_color: $('stHeaderColorHex').value.trim() || '#16a34a',
-    button_color: $('stButtonColorHex').value.trim() || '#16a34a',
-    accent_color: $('stAccentColorHex').value.trim() || '#16a34a',
-    greeting: $('stGreeting').value.trim(),
-    fallback: $('stFallback').value.trim(),
-    updated_at: new Date().toISOString()
+    user_id:          currentUser.id,
+    bot_name:         $('stBotName').value.trim()        || DEFAULT_SETTINGS.bot_name,
+    header_color:     $('stHeaderColorHex').value.trim() || DEFAULT_SETTINGS.header_color,
+    button_color:     $('stButtonColorHex').value.trim() || DEFAULT_SETTINGS.button_color,
+    accent_color:     $('stAccentColorHex').value.trim() || DEFAULT_SETTINGS.accent_color,
+    whatsapp:         $('stWhatsapp').value.trim()        || DEFAULT_SETTINGS.whatsapp,
+    greeting:         $('stGreeting').value.trim()        || DEFAULT_SETTINGS.greeting,
+    fallback_message: $('stFallback').value.trim()        || DEFAULT_SETTINGS.fallback_message,
+    updated_at:       new Date().toISOString()
   };
 
-  $('btnSaveSettings').disabled = true;
+  var btn = $('btnSaveSettings');
+  btn.disabled = true;
+  btn.textContent = 'Menyimpan...';
+
   try {
-    // Menggunakan upsert agar tidak bentrok jika data user_id sudah ada
-    var res = await sb.from('widget_settings').upsert(payload, { onConflict: 'user_id' });
-    if (res.error) throw res.error;
-    toast('Pengaturan berhasil disimpan!');
-  } catch (e) {
-    errEl.textContent = 'Gagal menyimpan pengaturan: ' + (e.message || e);
-    errEl.classList.remove('hidden');
+    var r = await sb
+      .from('widget_settings')
+      .upsert(payload, {
+        onConflict:       'user_id',  // harus cocok dengan nama CONSTRAINT di SQL
+        ignoreDuplicates: false       // false = UPDATE jika sudah ada, bukan dilewati
+      });
+
+    if (r.error) {
+      var e = $('settingsError');
+      e.textContent = 'Gagal menyimpan: ' + r.error.message +
+        (r.error.code === '23505' ? ' — Cek apakah UNIQUE constraint sudah terpasang di Supabase.' : '');
+      e.classList.remove('hidden');
+      return;
+    }
+
+    currentSettings = payload;
+    toast('Pengaturan widget tersimpan ✓');
+    buildEmbedCode();
+
   } finally {
-    $('btnSaveSettings').disabled = false;
+    btn.disabled = false;
+    btn.textContent = 'Simpan Pengaturan';
   }
 }
 $('btnSaveSettings').addEventListener('click', saveSettings);
@@ -610,16 +634,17 @@ $('btnSaveSettings').addEventListener('click', saveSettings);
 function buildEmbedCode() {
   if (!currentUser) return;
   var origin = location.origin;
+  var uid = currentUser.id;
+
+  // Format baru: cukup 1 baris <script> dengan data-bot-id (lebih simpel)
   $('embedCode').value =
     '<!-- ===== Chat Widget CS ===== -->\n' +
-    '<script>\n' +
-    '  window.CHAT_WIDGET_CONFIG = {\n' +
-    '    botId: \'' + currentUser.id + '\'\n' +
-    '  };\n' +
-    '<\/script>\n' +
-    '<script src="' + origin + '/widget.js" async><\/script>\n' +
+    '<script src="' + origin + '/widget.js"\n' +
+    '        data-bot-id="' + uid + '"\n' +
+    '        async><\/script>\n' +
     '<!-- ===== /Chat Widget CS ===== -->';
-  $('botIdDisplay').textContent = currentUser.id;
+
+  $('botIdDisplay').textContent = uid;
 }
 
 $('btnCopyEmbed').onclick = function () { copyText($('embedCode').value, 'Kode embed tersalin'); };
